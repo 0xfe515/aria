@@ -7,23 +7,43 @@
 - Current priority: build a working v0 physical demo with the parts that are currently available.
 
 ## Operating Model
-- GPT-level agent owns planning, orchestration, code review, integration, and final verification.
-- Smaller SubAgents may be used for narrow implementation tasks only. Assume SubAgents can be lightweight local models, so instructions must be explicit.
-- Do not give a SubAgent broad multi-module tasks. Assign one module or one behavior at a time.
-- Every SubAgent task must include:
-  - purpose
-  - input and output
+- GPT-level parent agent owns planning, orchestration, product/scope decisions, code review synthesis, integration, and final verification.
+- Use `pi-subagents` as the standard delegation mechanism when helpful. The package provides focused child Pi sessions and builtin agents such as `scout`, `researcher`, `planner`, `worker`, `reviewer`, `context-builder`, `oracle`, and `delegate`.
+- Prefer natural-language delegation or the `subagent(...)` tool. Before relying on a specific agent or saved chain, inspect availability with `subagent({ action: "list" })`; use `subagent({ action: "doctor" })` when setup, async runs, or intercom behavior looks wrong.
+- The parent agent must know how to route a task to a subagent running a different model when model diversity is useful. For one-off runs, pass a per-run model override such as `subagent({ agent: "reviewer", task: "Review this diff", model: "anthropic/claude-sonnet-4", context: "fresh", async: true })`, or in slash-command form `/run reviewer[model=anthropic/claude-sonnet-4] "Review this diff" --bg`. For parallel reviews, set `model` per task when useful. Do not hard-code project-wide model choices in this file; use `.pi/settings.json` `subagents.agentOverrides` only when the user explicitly wants persistent project defaults.
+- Use the right role for the job:
+  - `scout`: quick local codebase reconnaissance before planning.
+  - `researcher`: external docs/spec/model/hardware research with sources.
+  - `context-builder`: stronger handoff context and meta-prompts for larger work.
+  - `planner`: implementation plan only; it should not edit code.
+  - `oracle`: forked second opinion for risky direction, assumptions, drift, or architecture decisions; advisory unless explicitly assigned the single writer role.
+  - `worker`: implementation after the parent approves scope and direction.
+  - `reviewer`: fresh-context review/validation of a plan, diff, or implementation.
+- Default workflow for non-trivial implementation: clarify scope and validation contract -> gather context with `scout`/`context-builder` and `researcher` when external facts matter -> plan when useful -> one async `worker` implements -> fresh-context parallel `reviewer`/validator passes -> parent synthesizes findings -> one async `worker` applies accepted fixes -> parent inspects diff and validates.
+- Prefer `async: true` for subagent runs so the parent can continue independent inspection, validation prep, or synthesis. If no useful independent work remains, stop and wait for the async completion instead of polling.
+- Keep writes single-threaded by default. Do not run multiple writer subagents against the same active worktree. Use parallel subagents for read-only scouting, research, review, and validation. Use `worktree: true` only for intentionally isolated parallel writer experiments and only from a clean git state.
+- Use `context: "fresh"` for adversarial reviewers and validators so they inspect the repo/diff directly. Use forked context for `oracle` or approved `worker` runs when inherited parent context is useful; note that packaged `planner`, `worker`, and `oracle` may default to forked context.
+- Do not let child subagents become orchestrators. Ordinary children must not launch their own subagents, run review loops, or make product/scope decisions. If a child needs an unapproved decision, it must escalate to the parent (via intercom/contact-supervisor when available) instead of guessing.
+- SubAgent tasks must stay narrow. Assign one module, behavior, review angle, or research question at a time; do not give a child broad multi-module ownership unless it is explicitly a read-only reconnaissance/planning pass.
+- Every implementation SubAgent task must include:
+  - purpose and approved scope
+  - input context, plan path/summary, and expected output
   - files or directories it may edit
-  - constraints and forbidden changes
-  - validation command or manual check
-- At the end of each SubAgent task, require a concise work log so the next agent can resume if the task stops because of quota limits or an unknown interruption.
+  - constraints, non-goals, and forbidden changes
+  - validation contract: commands to run or manual checks to perform, plus expected evidence
+  - stop/escalation rules for missing hardware, unapproved decisions, or unsafe assumptions
+- Review-only SubAgent tasks must explicitly say whether project/source files may be modified. For normal review fanout, say "do not modify project/source files"; returning findings through the response or configured output artifact is allowed.
+- For large subagent outputs, configure an `output` path and `outputMode: "file-only"`; do not use `output: false` when a saved artifact is expected.
+- At the end of each implementation or validation SubAgent task, require a concise work log so the next agent can resume if the task stops because of quota limits or an unknown interruption.
 - The SubAgent work log must include:
-  - completed changes
+  - completed changes or findings
   - files touched
-  - commands run and their results
+  - commands run and their results/exit codes
+  - validation evidence and hardware verification status
   - known issues or blockers
+  - decisions needing parent/user approval
   - next recommended step
-- GPT-level agent must review SubAgent output before integration. If issues remain, send a focused follow-up task rather than accepting broad changes.
+- GPT-level parent agent must review SubAgent output before integration or final summary. If issues remain, synthesize accepted fixes and send a focused follow-up task rather than accepting broad changes.
 
 ## Hardware
 Available or assumed for v0:
