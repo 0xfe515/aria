@@ -2,7 +2,7 @@
 """Verify the ARIA main camera on the Raspberry Pi target.
 
 Run this script from a development machine. By default it SSHes to
-aria@aira-core and executes the camera check there. Override with
+aria@aria-core and executes the camera check there. Override with
 ARIA_VERIFY_HOST or --host if needed.
 """
 
@@ -18,8 +18,8 @@ import sys
 import time
 from pathlib import Path
 
-DEFAULT_HOST = os.environ.get("ARIA_VERIFY_HOST", "aria@aira-core")
-DEFAULT_REMOTE_REPO = os.environ.get("ARIA_REMOTE_REPO", "~/aria")
+DEFAULT_HOST = os.environ.get("ARIA_VERIFY_HOST", "aria@aria-core")
+DEFAULT_REMOTE_REPO = os.environ.get("ARIA_REMOTE_REPO", "/home/aria/aria")
 
 
 def parse_args() -> argparse.Namespace:

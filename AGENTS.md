@@ -150,7 +150,7 @@ Keep hardware-specific code behind small adapters so missing v1 hardware does no
 - If Pi access is unavailable, perform local static checks only and clearly report that hardware verification is blocked.
 - The demo environment is GUI-capable, but resource constrained. Prefer OpenCV windows over a browser/web dashboard for v0.
 - Do not introduce a web server or streaming dashboard unless the user explicitly requests it.
-- Provide and use small local verification scripts as implementation proceeds. These scripts should be launched from the development machine and must run the actual hardware checks on the Raspberry Pi via SSH as `aria@aira-core` by default, with `ARIA_VERIFY_HOST`, `--host`, or the Tailnet IP available as overrides:
+- Provide and use small local verification scripts as implementation proceeds. These scripts should be launched from the development machine and must run the actual hardware checks on the Raspberry Pi via SSH as `aria@aria-core` by default, with `ARIA_VERIFY_HOST`, `--host`, or the Tailnet IP available as overrides:
   - `scripts/verify_camera.py` for camera discovery and frame display.
   - `scripts/verify_hailo.py` for Hailo runtime/model loading and inference path checks.
   - `scripts/verify_tof.py` for Pico USB CDC serial and VL53L5CX frame decoding.
@@ -165,6 +165,7 @@ Keep hardware-specific code behind small adapters so missing v1 hardware does no
 - Use `git diff` to review changes before summarizing or committing.
 - Do not revert, overwrite, or discard user changes unless explicitly instructed.
 - Keep generated caches, local model files, credentials, and machine-specific configuration out of git.
+- At the end of completed work, commit reviewable changes and push the working branch to GitHub automatically unless the user explicitly says not to push.
 - Synchronize to `aria-core` through git operations such as clone, fetch, pull, branch checkout, and commit transfer rather than manual file copying when practical.
 
 ## v0 Acceptance Checks
