@@ -124,6 +124,7 @@ Keep hardware-specific code behind small adapters so missing v1 hardware does no
 ## Runtime and Verification
 - Execute and validate real device behavior on the provided Raspberry Pi environment, not only on the local workstation.
 - Target host: `aria-core` through Tailscale MagicDNS, or Tailnet IP `100.99.8.124`.
+- Target host SSH account name: `aria`.
 - Use git clone or git pull on the Pi to synchronize code for verification.
 - Never commit SSH keys, Tailnet credentials, model licenses, or local secrets.
 - If Pi access is unavailable, perform local static checks only and clearly report that hardware verification is blocked.
