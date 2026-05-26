@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Verify Pico USB CDC / VL53L5CX ToF serial data on the Raspberry Pi target.
 
-Defaults to SSH execution on aria@aira-core. The current firmware frame format is
-not assumed here; this script validates that the USB serial device is present and
-that bytes/lines are being received from the Pico bridge.
+Defaults to SSH execution on aria@aria-core. The script validates that the USB
+serial device is present and bytes are received. With --require-frame it also
+requires at least one valid ARIA binary VL53L5CX frame.
 """
 
 from __future__ import annotations
@@ -19,8 +19,12 @@ import sys
 import time
 from pathlib import Path
 
-DEFAULT_HOST = os.environ.get("ARIA_VERIFY_HOST", "aria@aira-core")
-DEFAULT_REMOTE_REPO = os.environ.get("ARIA_REMOTE_REPO", "~/aria")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+DEFAULT_HOST = os.environ.get("ARIA_VERIFY_HOST", "aria@aria-core")
+DEFAULT_REMOTE_REPO = os.environ.get("ARIA_REMOTE_REPO", "/home/aria/aria")
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,6 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--baud", type=int, default=int(os.environ.get("ARIA_TOF_BAUD", "115200")))
     parser.add_argument("--seconds", type=float, default=5.0, help="Read duration")
     parser.add_argument("--min-bytes", type=int, default=16, help="Minimum bytes required for PASS")
+    parser.add_argument("--require-frame", action="store_true", help="Require a valid ARIA binary ToF frame")
     return parser.parse_args()
 
 
@@ -48,6 +53,8 @@ def rerun_on_target(args: argparse.Namespace) -> int:
     forwarded = ["--remote", "--baud", str(args.baud), "--seconds", str(args.seconds), "--min-bytes", str(args.min_bytes)]
     if args.port:
         forwarded += ["--port", args.port]
+    if args.require_frame:
+        forwarded.append("--require-frame")
 
     remote_cmd = "cd {repo} && {py} scripts/verify_tof.py {args}".format(
         repo=shlex.quote(args.remote_repo),
@@ -65,6 +72,28 @@ def auto_detect_port() -> str | None:
     candidates = sorted(dict.fromkeys(candidates))
     print(f"serial_candidates={candidates}")
     return candidates[0] if candidates else None
+
+
+def parse_aria_frames(raw: bytes) -> list[object]:
+    try:
+        from aria.distance import BINARY_FRAME_SIZE, MAGIC, parse_binary_frame
+    except Exception as exc:
+        print(f"WARN: could not import ARIA frame parser: {exc}")
+        return []
+
+    frames: list[object] = []
+    cursor = 0
+    while True:
+        start = raw.find(MAGIC, cursor)
+        if start < 0 or start + BINARY_FRAME_SIZE > len(raw):
+            break
+        candidate = raw[start : start + BINARY_FRAME_SIZE]
+        try:
+            frames.append(parse_binary_frame(candidate))
+            cursor = start + BINARY_FRAME_SIZE
+        except ValueError:
+            cursor = start + 1
+    return frames
 
 
 def run_tof_check(args: argparse.Namespace) -> int:
@@ -86,6 +115,7 @@ def run_tof_check(args: argparse.Namespace) -> int:
 
     print(f"opening port={port} baud={args.baud} seconds={args.seconds}")
     total = 0
+    raw = bytearray()
     chunks: list[bytes] = []
     deadline = time.monotonic() + args.seconds
     try:
@@ -95,6 +125,7 @@ def run_tof_check(args: argparse.Namespace) -> int:
                 data = ser.read(256)
                 if data:
                     total += len(data)
+                    raw.extend(data)
                     if len(chunks) < 8:
                         chunks.append(data)
     except Exception as exc:
@@ -110,6 +141,26 @@ def run_tof_check(args: argparse.Namespace) -> int:
     if total < args.min_bytes:
         print(f"FAIL: received {total} bytes, expected at least {args.min_bytes}", file=sys.stderr)
         return 1
+
+    frames = parse_aria_frames(bytes(raw))
+    if frames:
+        latest = frames[-1]
+        distances = getattr(latest, "distances_mm", ())
+        valid_values = [value for value in distances if value is not None and value > 0]
+        print(
+            "aria_frames={count} latest_sequence={seq} latest_status={status} valid_zones={valid}".format(
+                count=len(frames),
+                seq=getattr(latest, "sequence", None),
+                status=getattr(latest, "status", None),
+                valid=len(valid_values),
+            )
+        )
+        if valid_values:
+            print(f"distance_mm_min={min(valid_values)} distance_mm_median_sample={valid_values[len(valid_values)//2]}")
+    elif args.require_frame:
+        print("FAIL: no valid ARIA binary ToF frame decoded", file=sys.stderr)
+        return 1
+
     print("PASS: ToF/Pico serial data received")
     return 0
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verify Hailo runtime and YOLO HEF availability on the Raspberry Pi target.
 
-The script defaults to running through SSH on aria@aira-core. Provide --hef or
+The script defaults to running through SSH on aria@aria-core. Provide --hef or
 ARIA_HEF_PATH for the Hailo-8L YOLOv8n model file to validate.
 """
 
@@ -16,8 +16,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-DEFAULT_HOST = os.environ.get("ARIA_VERIFY_HOST", "aria@aira-core")
-DEFAULT_REMOTE_REPO = os.environ.get("ARIA_REMOTE_REPO", "~/aria")
+DEFAULT_HOST = os.environ.get("ARIA_VERIFY_HOST", "aria@aria-core")
+DEFAULT_REMOTE_REPO = os.environ.get("ARIA_REMOTE_REPO", "/home/aria/aria")
 
 
 def parse_args() -> argparse.Namespace:

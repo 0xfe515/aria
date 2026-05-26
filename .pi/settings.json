@@ -22,21 +22,22 @@
         "defaultContext": "fresh"
       },
       "worker": {
-        "model": "openai-codex/gpt-5.4-mini",
+        "model": "ollama/kimi-k2.6:cloud",
         "thinking": "medium",
-        "defaultContext": "fork",
-        "fallbackModels": ["openai-codex/gpt-5.3-codex", "openai-codex/gpt-5.4"]
+        "defaultContext": "fresh",
+        "fallbackModels": ["ollama/qwen3.5:cloud"]
       },
       "reviewer": {
         "model": "ollama/kimi-k2.6:cloud",
         "thinking": "medium",
         "defaultContext": "fresh",
-        "fallbackModels": ["ollama/qwen3.5:cloud", "openai-codex/gpt-5.2"]
+        "fallbackModels": ["ollama/qwen3.5:cloud"]
       },
       "oracle": {
-        "model": "openai-codex/gpt-5.5",
+        "model": "ollama/kimi-k2.6:cloud",
         "thinking": "high",
-        "defaultContext": "fork"
+        "defaultContext": "fresh",
+        "fallbackModels": ["ollama/qwen3.5:cloud"]
       },
       "delegate": {
         "model": "ollama/qwen3.5:cloud",
