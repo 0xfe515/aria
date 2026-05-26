@@ -27,7 +27,7 @@ except Exception:  # pragma: no cover
 from aria.camera import Camera, CameraConfig
 from aria.config import DetectorConfig, TofConfig, UiConfig
 from aria.distance import BINARY_FRAME_SIZE, MAGIC, parse_binary_frame
-from aria.fusion import TofFrame, fuse_detection
+from aria.fusion import Region, TofFrame, fuse_detection, score_risk
 from aria.tracker import DetectionPersistence
 
 
@@ -416,6 +416,11 @@ class WebDemo:
             status.tof_center_mm = tof_summary.get("center_mm")
             if tof_summary.get("error"):
                 status.alert = f"tof_error: {tof_summary['error']}"
+            elif status.tof_center_mm is not None:
+                tof_risk = str(score_risk(region=Region.CENTER, distance_mm=status.tof_center_mm).value)
+                status.risk = tof_risk
+                if tof_risk in {"danger", "caution"}:
+                    status.alert = f"tof_{tof_risk}"
 
         # Read camera
         frame = None
@@ -448,8 +453,9 @@ class WebDemo:
                     status.alert = "danger"
                 elif any("caution" in risk for risk in risks):
                     status.risk = "caution"
-                    status.alert = "caution"
-                elif fused_detections:
+                    if status.alert in {"none", "tof_caution"}:
+                        status.alert = "caution"
+                elif fused_detections and status.risk not in {"danger", "caution"}:
                     status.risk = "clear" if all("clear" in risk for risk in risks) else "unknown"
             except Exception as exc:
                 status.detector = f"error: {exc}"
