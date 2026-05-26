@@ -18,6 +18,7 @@ ARIA_WEB_PORT=8080
 ARIA_CAMERA_FPS=30
 ARIA_CAMERA_FOURCC=MJPG
 ARIA_CAMERA_BUFFER_SIZE=1
+ARIA_CAMERA_THREADED=1
 ARIA_BOX_PERSISTENCE_S=0.45
 ARIA_STREAM_MAX_WIDTH=640
 ARIA_JPEG_QUALITY=60
@@ -60,6 +61,7 @@ The script detects `/home/aria/Desktop` first and creates:
 The launcher now targets responsive 30 FPS demos by default:
 
 - `ARIA_CAMERA_FPS=30`, `ARIA_CAMERA_FOURCC=MJPG`, `ARIA_CAMERA_BUFFER_SIZE=1`: request low-latency USB camera capture with minimal buffering.
+- `ARIA_CAMERA_THREADED=1`: continuously drain the camera in a background thread and process the latest frame, reducing stale-frame lag when inference/web encoding is slower than capture.
 - `ARIA_STREAM_MAX_WIDTH=640`: downscale the rendered web frame before JPEG encoding.
 - `ARIA_JPEG_QUALITY=60`: smaller JPEGs reduce encode/network/browser latency.
 - `ARIA_WEB_FPS=30`: stream at up to 30 FPS when camera/inference can keep up.

@@ -18,6 +18,7 @@ class CameraConfig:
     fps: int | None = int(os.environ.get("ARIA_CAMERA_FPS", "30"))
     fourcc: str | None = os.environ.get("ARIA_CAMERA_FOURCC", "MJPG") or None
     buffer_size: int = int(os.environ.get("ARIA_CAMERA_BUFFER_SIZE", "1"))
+    threaded: bool = os.environ.get("ARIA_CAMERA_THREADED", "1") not in ("0", "false", "False", "FALSE")
 
     def normalized_source(self) -> int | str:
         return int(self.source) if isinstance(self.source, str) and self.source.isdigit() else self.source
