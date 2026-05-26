@@ -19,6 +19,30 @@ export ARIA_WEB_HOST="${ARIA_WEB_HOST:-0.0.0.0}"
 export ARIA_WEB_PORT="${ARIA_WEB_PORT:-8080}"
 export ARIA_BOX_PERSISTENCE_S="${ARIA_BOX_PERSISTENCE_S:-0.45}"
 
+# Demo-friendly auto-detection for aria-core. Explicit environment variables or
+# CLI flags still win, but a plain ./run_demo.sh should use the known local HEF
+# and Pico MicroPython USB CDC port when they are present.
+if [[ -z "${ARIA_HEF_PATH:-}" ]]; then
+  for candidate in \
+    /home/aria/proto/prototype/models/yolov8n_640.hef \
+    /usr/share/hailo-models/yolov8s_h8l.hef \
+    /usr/share/hailo-models/yolov6n_h8l.hef; do
+    if [[ -f "$candidate" ]]; then
+      export ARIA_HEF_PATH="$candidate"
+      break
+    fi
+  done
+fi
+
+if [[ -z "${ARIA_TOF_PORT:-}" ]]; then
+  for candidate in /dev/serial/by-id/*MicroPython* /dev/ttyACM0 /dev/ttyACM1; do
+    if [[ -e "$candidate" ]]; then
+      export ARIA_TOF_PORT="$candidate"
+      break
+    fi
+  done
+fi
+
 if [[ "${1:-}" == "--install-desktop-link" ]]; then
   desktop_dir="${ARIA_DESKTOP_DIR:-}"
   if [[ -z "$desktop_dir" ]]; then
