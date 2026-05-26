@@ -1,0 +1,48 @@
+{
+  "subagents": {
+    "agentOverrides": {
+      "scout": {
+        "model": "ollama/qwen3.5:cloud",
+        "thinking": "low",
+        "defaultContext": "fresh"
+      },
+      "researcher": {
+        "model": "ollama/qwen3.5:cloud",
+        "thinking": "medium",
+        "defaultContext": "fresh"
+      },
+      "context-builder": {
+        "model": "ollama/kimi-k2.6:cloud",
+        "thinking": "medium",
+        "defaultContext": "fresh"
+      },
+      "planner": {
+        "model": "ollama/kimi-k2.6:cloud",
+        "thinking": "medium",
+        "defaultContext": "fresh"
+      },
+      "worker": {
+        "model": "openai-codex/gpt-5.4-mini",
+        "thinking": "medium",
+        "defaultContext": "fork",
+        "fallbackModels": ["openai-codex/gpt-5.3-codex", "openai-codex/gpt-5.4"]
+      },
+      "reviewer": {
+        "model": "ollama/kimi-k2.6:cloud",
+        "thinking": "medium",
+        "defaultContext": "fresh",
+        "fallbackModels": ["ollama/qwen3.5:cloud", "openai-codex/gpt-5.2"]
+      },
+      "oracle": {
+        "model": "openai-codex/gpt-5.5",
+        "thinking": "high",
+        "defaultContext": "fork"
+      },
+      "delegate": {
+        "model": "ollama/qwen3.5:cloud",
+        "thinking": "low",
+        "defaultContext": "fresh"
+      }
+    }
+  }
+}
