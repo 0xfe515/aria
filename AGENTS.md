@@ -45,6 +45,22 @@
   - next recommended step
 - GPT-level parent agent must review SubAgent output before integration or final summary. If issues remain, synthesize accepted fixes and send a focused follow-up task rather than accepting broad changes.
 
+## Context Management
+
+- Use `context-mode` for any command or file operation that may return large output.
+- Prefer `ctx_execute`, `ctx_execute_file`, `ctx_batch_execute`, `ctx_fetch_and_index`, and `ctx_search` when analyzing, filtering, summarizing, parsing, testing, building, reading logs, inspecting git history, fetching docs, or processing API responses.
+- Use normal `read` only when exact file contents are needed for editing; use `ctx_execute_file` for analysis-only reads.
+- Use normal `bash` mainly for guaranteed-small output or state-changing operations such as `pwd`, small-directory `ls`, `mkdir`, `mv`, `rm`, `git add`, `git commit`, `git push`, package installs, and process control.
+- Think in code: when deriving information from data, write a short script and print only the derived answer instead of dumping raw output into context.
+- For web documentation, use `ctx_fetch_and_index` followed by `ctx_search`; do not use raw `curl`/`wget` output.
+- Batch related searches or command captures in one call when practical.
+- After resume or compact, search context-mode memory before asking the user to repeat prior decisions.
+- Utility commands:
+  - `ctx stats`: show context savings.
+  - `ctx doctor`: diagnose context-mode.
+  - `ctx upgrade`: update context-mode.
+  - `ctx purge`: destructive reset of the knowledge base; only use when explicitly requested.
+
 ## Hardware
 Available or assumed for v0:
 - Raspberry Pi 5 8GB

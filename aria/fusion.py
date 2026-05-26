@@ -24,10 +24,42 @@ class RiskLevel(str, Enum):
 
 
 @dataclass(frozen=True)
+class BBox:
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+    def __iter__(self):
+        return iter((self.x1, self.y1, self.x2, self.y2))
+
+    @property
+    def center_x(self) -> float:
+        return (self.x1 + self.x2) / 2.0
+
+    @property
+    def center_y(self) -> float:
+        return (self.y1 + self.y2) / 2.0
+
+    @property
+    def width(self) -> float:
+        return max(0.0, self.x2 - self.x1)
+
+    @property
+    def height(self) -> float:
+        return max(0.0, self.y2 - self.y1)
+
+    @property
+    def area(self) -> float:
+        return self.width * self.height
+
+
+@dataclass(frozen=True)
 class Detection:
     label: str
     confidence: float
-    bbox: tuple[float, float, float, float]  # x1, y1, x2, y2 in image pixels
+    bbox: BBox | tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+    class_id: int = 0
 
     def center(self) -> tuple[float, float]:
         x1, y1, x2, y2 = self.bbox
