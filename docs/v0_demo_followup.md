@@ -34,13 +34,14 @@
 
 ---
 
-### 2. Pico 2W 펌웨어 C/C++ 기반 전환 검토 및 업로드
+### 2. Pico 2W 펌웨어는 MicroPython 유지
 
-#### 배경
-- 현재 Pico 2W VL53L5CX bridge는 MicroPython 기반이다.
-- 펌웨어를 자주 수정할 필요가 없다면, 장기 사용 안정성을 위해 C/C++ 기반 펌웨어로 전환하는 것을 검토한다.
+#### 결정
+- 2026-05-27 사용자 결정에 따라 v0는 MicroPython 기반 Pico 2W VL53L5CX bridge로 회귀/유지한다.
+- C/C++ Pico SDK 전환은 v0 범위에서 제외한다.
 
 #### 요구사항
+- 기존 MicroPython firmware(`firmware/pico_vl53l5cx/main.py`)를 사용한다.
 - 기존 binary frame format은 유지한다.
   - magic: `ARF1`
   - sequence
@@ -48,19 +49,12 @@
   - 64개 8x8 distance 값
   - checksum
 - Pi-side parser(`aria/distance.py`)와 호환되어야 한다.
-- Pico 2W에 C/C++ 펌웨어를 빌드/업로드할 수 있는 절차를 문서화하거나 스크립트화한다.
-
-#### 구현 방향
-- `firmware/pico_vl53l5cx/` 하위에 C/C++ 펌웨어 프로젝트 추가 검토
-  - 예: `firmware/pico_vl53l5cx_cpp/`
-- Pico SDK 기반 CMake 프로젝트 구성
-- VL53L5CX 드라이버 사용 가능성 확인
-- 기존 MicroPython 펌웨어는 bring-up/debug fallback으로 보존한다.
+- `scripts/provision_pico_vl53l5cx.py`와 `scripts/verify_tof.py --require-frame`를 기본 운용/검증 경로로 둔다.
 
 #### 완료 기준
-- Pico 2W가 C/C++ 펌웨어로 USB CDC binary frame을 지속 송신한다.
+- Pico 2W가 MicroPython 펌웨어로 USB CDC binary frame을 지속 송신한다.
 - `scripts/verify_tof.py --require-frame`가 통과한다.
-- MicroPython 버전과 동일한 frame format을 유지한다.
+- C/C++ scaffold 또는 빌드 절차는 v0 필수 산출물에 포함하지 않는다.
 
 ---
 

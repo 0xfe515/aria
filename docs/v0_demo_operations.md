@@ -57,6 +57,13 @@ but short enough that stale boxes do not linger. Matched detections update the
 track every frame using class/label plus IoU, so boxes follow moving objects
 instead of remaining fixed.
 
+## Pico ToF firmware policy
+
+For v0, use the MicroPython bridge in `firmware/pico_vl53l5cx/main.py`.
+The C/C++ Pico SDK migration is intentionally not part of the v0 demo path.
+Provision/update the Pico with `scripts/provision_pico_vl53l5cx.py` and verify
+USB CDC binary frames with `scripts/verify_tof.py --require-frame`.
+
 ## Hardware verification
 
 From the development machine:
