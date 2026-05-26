@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run ARIA v0 with selectable Web, Qt, and/or OpenCV UI."""
+"""Run ARIA v0 with selectable Web and/or Qt UI."""
 
 from __future__ import annotations
 
@@ -24,9 +24,6 @@ def parse_args() -> argparse.Namespace:
     qt = parser.add_mutually_exclusive_group()
     qt.add_argument("--qt", dest="qt", action="store_true", default=os.environ.get("ARIA_QT", "0") in ("1", "true", "True"))
     qt.add_argument("--no-qt", dest="qt", action="store_false")
-    opencv = parser.add_mutually_exclusive_group()
-    opencv.add_argument("--opencv", dest="opencv", action="store_true", default=os.environ.get("ARIA_OPENCV", "0") in ("1", "true", "True"))
-    opencv.add_argument("--no-opencv", dest="opencv", action="store_false")
     parser.add_argument("--host", default=os.environ.get("ARIA_WEB_HOST", "0.0.0.0"))
     parser.add_argument("--web-port", "--port", dest="port", type=int, default=int(os.environ.get("ARIA_WEB_PORT", "8080")))
     parser.add_argument("--camera-source", default=os.environ.get("ARIA_CAMERA_SOURCE", "0"))
@@ -75,8 +72,8 @@ def build_pipeline(args: argparse.Namespace) -> WebDemo:
 
 def main() -> int:
     args = parse_args()
-    if not args.web and not args.qt and not args.opencv:
-        print("At least one UI must be enabled; use --web, --qt, --opencv, or a wrapper script.", file=sys.stderr)
+    if not args.web and not args.qt:
+        print("At least one UI must be enabled; use --web, --qt, or a wrapper script.", file=sys.stderr)
         return 2
     if not args.hef_path:
         print("Warning: --hef-path/ARIA_HEF_PATH is not set; detector will be marked not_loaded.", file=sys.stderr)
@@ -87,9 +84,6 @@ def main() -> int:
     if args.qt:
         from aria.qt_ui import QtDemo
         return QtDemo(pipeline).run()
-    if args.opencv:
-        from aria.opencv_ui import OpenCvDemo
-        return OpenCvDemo(pipeline).run()
 
     pipeline.start()
     pipeline.run()
