@@ -104,6 +104,16 @@ Keep hardware-specific code behind small adapters so missing v1 hardware does no
 - The demo environment is GUI-capable, but resource constrained. Prefer OpenCV windows over a browser/web dashboard for v0.
 - Do not introduce a web server or streaming dashboard unless the user explicitly requests it.
 
+## Git Workflow
+- Use git actively to make work traceable and easy to synchronize with the Raspberry Pi.
+- Check `git status` before making changes and before handing work back.
+- Prefer small, reviewable changes grouped by behavior or module.
+- Use branches for implementation work. If no branch name is specified, prefer the `codex/` prefix.
+- Use `git diff` to review changes before summarizing or committing.
+- Do not revert, overwrite, or discard user changes unless explicitly instructed.
+- Keep generated caches, local model files, credentials, and machine-specific configuration out of git.
+- Synchronize to `aria-core` through git operations such as clone, fetch, pull, branch checkout, and commit transfer rather than manual file copying when practical.
+
 ## v0 Acceptance Checks
 The v0 demo is complete only when these checks pass on `aria-core`:
 - The main camera opens and displays live frames.
