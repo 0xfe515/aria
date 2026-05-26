@@ -2,11 +2,17 @@
 
 ## Run the demo
 
-Preferred launcher:
+Preferred launchers:
 
 ```bash
-scripts/run_demo.sh --web --web-port 8080
+# Remote browser UI
+scripts/run_web_demo.sh
+
+# Local desktop OpenCV window
+scripts/run_opencv_demo.sh
 ```
+
+`run_demo.sh` remains the common launcher behind both wrappers.
 
 Useful environment variables, either exported or placed in `.env`:
 
@@ -29,13 +35,15 @@ UI selection:
 
 ```bash
 # Web only, default for remote demos
-scripts/run_demo.sh --web --no-qt
+scripts/run_web_demo.sh
+# equivalent: scripts/run_demo.sh --web --no-qt --no-opencv
 
-# Local HDMI/desktop Qt only
-scripts/run_demo.sh --no-web --qt
+# Local HDMI/desktop OpenCV window only
+scripts/run_opencv_demo.sh
+# equivalent: scripts/run_demo.sh --no-web --no-qt --opencv
 
-# Web stream plus local Qt window
-scripts/run_demo.sh --web --qt
+# Optional Qt window, if desired
+scripts/run_demo.sh --no-web --qt --no-opencv
 ```
 
 Qt requires either PySide6 or PyQt5 on the Raspberry Pi desktop environment. If
@@ -53,7 +61,9 @@ scripts/run_demo.sh --install-desktop-link
 The script detects `/home/aria/Desktop` first and creates:
 
 ```text
-/home/aria/Desktop/run_aria_demo.sh
+/home/aria/Desktop/run_aria_web_demo.sh
+/home/aria/Desktop/run_aria_opencv_demo.sh
+/home/aria/Desktop/run_aria_demo.sh -> web demo
 ```
 
 ## Web UI latency tuning

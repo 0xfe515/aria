@@ -60,9 +60,14 @@ if [[ "${1:-}" == "--install-desktop-link" ]]; then
       mkdir -p "$desktop_dir"
     fi
   fi
-  chmod +x "$REPO_ROOT/scripts/run_demo.sh"
-  ln -sfn "$REPO_ROOT/scripts/run_demo.sh" "$desktop_dir/run_aria_demo.sh"
-  echo "Installed desktop launcher: $desktop_dir/run_aria_demo.sh"
+  chmod +x "$REPO_ROOT/scripts/run_demo.sh" "$REPO_ROOT/scripts/run_web_demo.sh" "$REPO_ROOT/scripts/run_opencv_demo.sh"
+  ln -sfn "$REPO_ROOT/scripts/run_web_demo.sh" "$desktop_dir/run_aria_web_demo.sh"
+  ln -sfn "$REPO_ROOT/scripts/run_opencv_demo.sh" "$desktop_dir/run_aria_opencv_demo.sh"
+  ln -sfn "$REPO_ROOT/scripts/run_web_demo.sh" "$desktop_dir/run_aria_demo.sh"
+  echo "Installed desktop launchers:"
+  echo "  $desktop_dir/run_aria_web_demo.sh"
+  echo "  $desktop_dir/run_aria_opencv_demo.sh"
+  echo "  $desktop_dir/run_aria_demo.sh -> web demo"
   exit 0
 fi
 
