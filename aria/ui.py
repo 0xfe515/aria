@@ -25,7 +25,7 @@ except Exception:  # pragma: no cover
     cv2 = None  # type: ignore
 
 from aria.camera import Camera, CameraConfig
-from aria.config import TofConfig
+from aria.config import DetectorConfig, TofConfig
 from aria.distance import BINARY_FRAME_SIZE, MAGIC, parse_binary_frame
 
 
@@ -34,6 +34,8 @@ class DemoStatus:
     camera: str = "not_initialized"
     fps: float = 0.0
     frame_count: int = 0
+    detection_count: int = 0
+    detector: str = "not_initialized"
     tof_port: str | None = None
     tof_sequence: int | None = None
     tof_status: int | None = None
@@ -66,11 +68,11 @@ class OverlayRenderer:
         self.font_scale = font_scale
         self.thickness = thickness
 
-    def render(self, image: Any, status: DemoStatus) -> Any:
+    def render(self, image: Any, status: DemoStatus, detections: list[Any] | None = None) -> Any:
         if cv2 is None or image is None:
             return image
         h, w = image.shape[:2]
-        self._draw_text(image, f"CAM: {status.camera}  FPS:{status.fps:.1f}", (10, 30))
+        self._draw_text(image, f"CAM: {status.camera}  FPS:{status.fps:.1f}  DET:{status.detection_count}", (10, 30))
         self._draw_text(
             image,
             f"ToF: seq={status.tof_sequence} zones={status.tof_valid_zones} center={status.tof_center_mm}mm",
@@ -79,16 +81,34 @@ class OverlayRenderer:
         self._draw_text(image, f"ALERT: {status.alert}", (10, 80))
         cv2.line(image, (w // 3, 0), (w // 3, h), (0, 255, 255), 1)
         cv2.line(image, (2 * w // 3, 0), (2 * w // 3, h), (0, 255, 255), 1)
+        if detections:
+            for det in detections:
+                if not hasattr(det, "bbox"):
+                    continue
+                try:
+                    if isinstance(det.bbox, tuple):
+                        x1, y1, x2, y2 = det.bbox
+                    else:
+                        x1, y1, x2, y2 = det.bbox
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                    cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                    label = getattr(det, "label", "obj")
+                    conf = getattr(det, "confidence", 0.0)
+                    txt = f"{label} {conf:.2f}"
+                    ty = max(y1 - 5, 15)
+                    self._draw_text(image, txt, (x1, ty), color=(0, 0, 255))
+                except Exception:
+                    pass
         return image
 
-    def _draw_text(self, image: Any, text: str, org: tuple[int, int]) -> None:
+    def _draw_text(self, image: Any, text: str, org: tuple[int, int], color: tuple[int, int, int] = (0, 255, 0)) -> None:
         if cv2 is None:
             return
         cv2.putText(
             image, text, org, cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, (0, 0, 0), self.thickness + 2
         )
         cv2.putText(
-            image, text, org, cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, (0, 255, 0), self.thickness
+            image, text, org, cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, color, self.thickness
         )
 
 
@@ -246,6 +266,7 @@ class TofSerialReader:
                             self.latest_sequence = packet.sequence
                             self.latest_status = packet.status
                             self.latest_distances = packet.distances_mm
+                            self.error = None
                         buffer = buffer[start + BINARY_FRAME_SIZE :]
                     except ValueError:
                         buffer = buffer[start + 1 :]
@@ -286,12 +307,14 @@ class WebDemo:
         self,
         camera_config: CameraConfig | None = None,
         tof_config: TofConfig | None = None,
+        detector_config: DetectorConfig | None = None,
         host: str = "0.0.0.0",
         port: int = 8080,
         stream_interval: float = 0.033,
     ) -> None:
         self.camera_config = camera_config or CameraConfig()
         self.tof_config = tof_config or TofConfig()
+        self.detector_config = detector_config or DetectorConfig()
         self.host = host
         self.port = port
         self.stream_interval = stream_interval
@@ -301,6 +324,7 @@ class WebDemo:
         self._server_thread: threading.Thread | None = None
         self._camera: Camera | None = None
         self._tof_reader: TofSerialReader | None = None
+        self._detector = None
         self._renderer = OverlayRenderer()
         self._frame_count = 0
         self._fps_t0 = 0.0
@@ -324,6 +348,20 @@ class WebDemo:
         if self.tof_config.port:
             self._tof_reader = TofSerialReader(self.tof_config.port, self.tof_config.baud)
             self._tof_reader.start()
+
+        # Detector
+        if self.detector_config.model_path:
+            try:
+                from aria.detector import HailoDetector
+                self._detector = HailoDetector(
+                    model_path=self.detector_config.model_path,
+                    confidence_threshold=self.detector_config.confidence_threshold,
+                    input_size=self.detector_config.input_size,
+                    quantized_input=self.detector_config.quantized_input,
+                )
+                self._detector.open()
+            except Exception:
+                self._detector = None
 
     def _update(self) -> None:
         status = DemoStatus()
@@ -356,10 +394,21 @@ class WebDemo:
             frame = np.zeros((h, w, 3), dtype=np.uint8)
             self._draw_center_text(frame, "Camera unavailable", (w // 2, h // 2))
 
+        # Detect
+        detections: list[Any] = []
+        status.detector = "running" if self._detector is not None else "not_loaded"
+        if self._detector is not None and frame is not None:
+            try:
+                detections = self._detector.detect(frame)
+                status.detection_count = len(detections)
+            except Exception as exc:
+                status.detector = f"error: {exc}"
+                status.alert = f"detector: {exc}"
+
         status.frame_count = self._frame_count
         if frame is not None and cv2 is not None:
             status.fps = self._frame_count / max(time.monotonic() - self._fps_t0, 1e-9)
-            image = self._renderer.render(frame, status)
+            image = self._renderer.render(frame, status, detections=detections)
             jpeg = _encode_jpeg(image)
             if jpeg:
                 self._state.update(jpeg=jpeg, status=status)
@@ -389,6 +438,11 @@ class WebDemo:
         self._running.clear()
         if self._server:
             self._server.shutdown()
+        if self._detector is not None:
+            try:
+                self._detector.close()
+            except Exception:
+                pass
         if self._tof_reader:
             self._tof_reader.stop()
         if self._camera:

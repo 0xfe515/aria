@@ -34,3 +34,11 @@ class TofConfig:
     port: str | None = os.environ.get("ARIA_TOF_PORT")
     baud: int = int(os.environ.get("ARIA_TOF_BAUD", "115200"))
     stale_after_s: float = float(os.environ.get("ARIA_TOF_STALE_AFTER_S", "1.0"))
+
+
+@dataclass(frozen=True)
+class DetectorConfig:
+    model_path: str | None = os.environ.get("ARIA_HEF_PATH")
+    confidence_threshold: float = float(os.environ.get("ARIA_CONF_THRESHOLD", "0.35"))
+    input_size: int = int(os.environ.get("ARIA_DETECTOR_INPUT_SIZE", "640"))
+    quantized_input: bool = os.environ.get("ARIA_DETECTOR_QUANTIZED", "1") not in ("0", "false", "False", "FALSE")

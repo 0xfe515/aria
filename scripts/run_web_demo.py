@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from aria.config import CameraConfig, TofConfig
+from aria.config import CameraConfig, DetectorConfig, TofConfig
 from aria.ui import WebDemo
 
 
@@ -25,6 +25,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--camera-height", type=int, default=int(os.environ.get("ARIA_CAMERA_HEIGHT", "720")))
     parser.add_argument("--tof-port", default=os.environ.get("ARIA_TOF_PORT"))
     parser.add_argument("--tof-baud", type=int, default=int(os.environ.get("ARIA_TOF_BAUD", "115200")))
+    parser.add_argument("--hef-path", default=os.environ.get("ARIA_HEF_PATH"))
+    parser.add_argument("--conf-threshold", type=float, default=float(os.environ.get("ARIA_CONF_THRESHOLD", "0.35")))
+    parser.add_argument("--detector-input-size", type=int, default=int(os.environ.get("ARIA_DETECTOR_INPUT_SIZE", "640")))
     return parser.parse_args()
 
 
@@ -36,9 +39,15 @@ def main() -> int:
         height=args.camera_height,
     )
     tof_config = TofConfig(port=args.tof_port, baud=args.tof_baud)
+    detector_config = DetectorConfig(
+        model_path=args.hef_path,
+        confidence_threshold=args.conf_threshold,
+        input_size=args.detector_input_size,
+    )
     demo = WebDemo(
         camera_config=camera_config,
         tof_config=tof_config,
+        detector_config=detector_config,
         host=args.host,
         port=args.port,
     )
