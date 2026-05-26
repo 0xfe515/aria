@@ -16,6 +16,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
 DEFAULT_HOST = os.environ.get("ARIA_VERIFY_HOST", "aria@aria-core")
 DEFAULT_REMOTE_REPO = os.environ.get("ARIA_REMOTE_REPO", "/home/aria/aria")
 
@@ -27,6 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--remote", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--hef", default=os.environ.get("ARIA_HEF_PATH"), help="Path to Hailo-8L YOLOv8n .hef on target")
     parser.add_argument("--skip-hef", action="store_true", help="Only check runtime/device, not model file")
+    parser.add_argument("--run-inference", action="store_true", help="Open ARIA HailoDetector and run one synthetic inference")
     return parser.parse_args()
 
 
@@ -45,6 +50,8 @@ def rerun_on_target(args: argparse.Namespace) -> int:
         forwarded += ["--hef", args.hef]
     if args.skip_hef:
         forwarded.append("--skip-hef")
+    if args.run_inference:
+        forwarded.append("--run-inference")
 
     remote_cmd = "cd {repo} && {py} scripts/verify_hailo.py {args}".format(
         repo=shlex.quote(args.remote_repo),
@@ -112,10 +119,29 @@ def run_hailo_check(args: argparse.Namespace) -> int:
             print(f"FAIL: could not load HEF with hailo_platform: {exc}", file=sys.stderr)
             failed = True
 
+    if args.run_inference and not failed:
+        try:
+            import numpy as np
+            from aria.detector import HailoDetector
+
+            detector = HailoDetector(model_path=hef_path)
+            detector.open()
+            try:
+                frame = np.zeros((640, 640, 3), dtype=np.uint8)
+                detections = detector.detect(frame)
+                timing = ", ".join(f"{key}={value:.1f}ms" for key, value in detector.last_timing_ms.items())
+                print(f"PASS: Hailo inference completed, detections={len(detections)}, {timing}")
+            finally:
+                detector.close()
+        except Exception as exc:
+            print(f"FAIL: Hailo inference failed: {exc}", file=sys.stderr)
+            failed = True
+
     if failed:
         print("FAIL: Hailo verification did not pass", file=sys.stderr)
         return 1
-    print("PASS: Hailo runtime and HEF metadata check passed")
+    suffix = " and inference" if args.run_inference else ""
+    print(f"PASS: Hailo runtime and HEF metadata{suffix} check passed")
     return 0
 
 
