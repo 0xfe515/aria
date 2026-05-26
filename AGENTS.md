@@ -16,6 +16,13 @@
   - files or directories it may edit
   - constraints and forbidden changes
   - validation command or manual check
+- At the end of each SubAgent task, require a concise work log so the next agent can resume if the task stops because of quota limits or an unknown interruption.
+- The SubAgent work log must include:
+  - completed changes
+  - files touched
+  - commands run and their results
+  - known issues or blockers
+  - next recommended step
 - GPT-level agent must review SubAgent output before integration. If issues remain, send a focused follow-up task rather than accepting broad changes.
 
 ## Hardware
