@@ -81,11 +81,12 @@ Required behavior:
 - Fuse object detections with ToF distance data to estimate which detected object or screen region is close.
 - Divide the image into left, center, and right warning regions.
 - Compute a simple rule-based risk level from distance, region, object size change, and movement toward the center.
-- Display the result with OpenCV:
+- Display the result in a demo webpage for easier remote viewing:
   - original camera view
   - detection, distance, and risk overlay
   - text status panel or text overlay with sensor and alert state
-- Produce GUI/text alerts for v0. TTS and haptic outputs are future adapters, not required v0 output.
+  - browser-visible GUI/text alerts for v0
+- OpenCV may still be used for camera capture and overlay rendering, but the primary demo UI should be served as a lightweight local web page. TTS and haptic outputs are future adapters, not required v0 output.
 
 Hailo acceleration is mandatory for v0 completion:
 - The demo must load and run a Hailo-compatible YOLOv8n model, such as a HEF compiled for Hailo-8L.
@@ -96,7 +97,8 @@ Required v0 runtime components:
 - HailoRT installed and working on the Raspberry Pi 5.
 - Hailo Python bindings or an official Hailo example pipeline that can be integrated from Python.
 - A Hailo-8L-compatible YOLOv8n `.hef` model.
-- OpenCV for camera capture, GUI windows, overlays, and status rendering.
+- OpenCV for camera capture and overlay rendering.
+- A lightweight browser-accessible demo UI for remote verification on the Raspberry Pi target.
 
 Model asset policy:
 - Do not commit large model files, downloaded datasets, or generated model artifacts unless the user explicitly asks for that.
@@ -136,7 +138,7 @@ When adding code, prefer clear modules with narrow responsibilities:
 - `detector`: Hailo YOLOv8n model loading, preprocessing, inference, and postprocessing.
 - `distance`: VL53L5CX sensor transport and 8x8 distance frame parsing.
 - `fusion`: association between detections, image regions, ToF zones, and risk level.
-- `ui`: OpenCV windows, overlays, status text, and keyboard controls.
+- `ui`: lightweight webpage/web dashboard for remote viewing, with OpenCV-compatible overlay rendering and status text.
 - `alerts`: v0 GUI/text alerts with future TTS/haptic-compatible interfaces.
 
 Keep hardware-specific code behind small adapters so missing v1 hardware does not break the v0 demo.
@@ -148,8 +150,8 @@ Keep hardware-specific code behind small adapters so missing v1 hardware does no
 - Use git clone or git pull on the Pi to synchronize code for verification.
 - Never commit SSH keys, Tailnet credentials, model licenses, or local secrets.
 - If Pi access is unavailable, perform local static checks only and clearly report that hardware verification is blocked.
-- The demo environment is GUI-capable, but resource constrained. Prefer OpenCV windows over a browser/web dashboard for v0.
-- Do not introduce a web server or streaming dashboard unless the user explicitly requests it.
+- The demo environment is resource constrained, but remote viewing is important for demos. Prefer a lightweight local web page over an OpenCV-only window for v0.
+- If adding a web server or streaming dashboard, keep it simple, local-network oriented, and suitable for Raspberry Pi 5 resource limits; avoid heavy browser frameworks unless explicitly requested.
 - Provide and use small local verification scripts as implementation proceeds. These scripts should be launched from the development machine and must run the actual hardware checks on the Raspberry Pi via SSH as `aria@aria-core` by default, with `ARIA_VERIFY_HOST`, `--host`, or the Tailnet IP available as overrides:
   - `scripts/verify_camera.py` for camera discovery and frame display.
   - `scripts/verify_hailo.py` for Hailo runtime/model loading and inference path checks.
@@ -173,10 +175,10 @@ The v0 demo is complete only when these checks pass on `aria-core`:
 - The main camera opens and displays live frames.
 - The Hailo runtime loads the YOLOv8n model and inference runs on Hailo, not CPU-only.
 - VL53L5CX 8x8 distance data is received and converted into a usable center distance or zone map.
-- The OpenCV overlay shows class, confidence, bounding box, estimated distance, and risk label.
+- The webpage overlay shows class, confidence, bounding box, estimated distance, and risk label.
 - The status text reports camera, detector, ToF, FPS, and alert state.
 - Close objects, center-region hazards, and missing distance data each produce clear and safe status behavior.
-- The GUI runs at a usable demo frame rate on Raspberry Pi 5.
+- The web demo UI runs at a usable demo frame rate on Raspberry Pi 5 and is reachable from the remote development machine or Tailnet.
 
 ## Coding Guidance
 - Inspect the existing repository before adding structure. Follow existing style when it appears.
