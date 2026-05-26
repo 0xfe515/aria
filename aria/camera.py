@@ -45,6 +45,10 @@ class Camera:
             cap.release()
             return False
 
+        if self.config.buffer_size > 0:
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, self.config.buffer_size)
+        if self.config.fourcc:
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*self.config.fourcc[:4]))
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.width)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.height)
         if self.config.fps:

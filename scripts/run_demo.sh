@@ -15,12 +15,15 @@ fi
 export ARIA_CAMERA_SOURCE="${ARIA_CAMERA_SOURCE:-0}"
 export ARIA_CAMERA_WIDTH="${ARIA_CAMERA_WIDTH:-1280}"
 export ARIA_CAMERA_HEIGHT="${ARIA_CAMERA_HEIGHT:-720}"
+export ARIA_CAMERA_FPS="${ARIA_CAMERA_FPS:-30}"
+export ARIA_CAMERA_FOURCC="${ARIA_CAMERA_FOURCC:-MJPG}"
+export ARIA_CAMERA_BUFFER_SIZE="${ARIA_CAMERA_BUFFER_SIZE:-1}"
 export ARIA_WEB_HOST="${ARIA_WEB_HOST:-0.0.0.0}"
 export ARIA_WEB_PORT="${ARIA_WEB_PORT:-8080}"
 export ARIA_BOX_PERSISTENCE_S="${ARIA_BOX_PERSISTENCE_S:-0.45}"
-export ARIA_JPEG_QUALITY="${ARIA_JPEG_QUALITY:-70}"
-export ARIA_STREAM_MAX_WIDTH="${ARIA_STREAM_MAX_WIDTH:-960}"
-export ARIA_WEB_FPS="${ARIA_WEB_FPS:-12}"
+export ARIA_JPEG_QUALITY="${ARIA_JPEG_QUALITY:-60}"
+export ARIA_STREAM_MAX_WIDTH="${ARIA_STREAM_MAX_WIDTH:-640}"
+export ARIA_WEB_FPS="${ARIA_WEB_FPS:-30}"
 
 # Demo-friendly auto-detection for aria-core. Explicit environment variables or
 # CLI flags still win, but a plain ./run_demo.sh should use the known local HEF
@@ -64,7 +67,7 @@ fi
 
 echo "ARIA demo configuration:"
 echo "  repo: $REPO_ROOT"
-echo "  camera: ${ARIA_CAMERA_SOURCE} (${ARIA_CAMERA_WIDTH}x${ARIA_CAMERA_HEIGHT})"
+echo "  camera: ${ARIA_CAMERA_SOURCE} (${ARIA_CAMERA_WIDTH}x${ARIA_CAMERA_HEIGHT}@${ARIA_CAMERA_FPS}, fourcc=${ARIA_CAMERA_FOURCC}, buffer=${ARIA_CAMERA_BUFFER_SIZE})"
 echo "  hef: ${ARIA_HEF_PATH:-<not set>}"
 echo "  tof: ${ARIA_TOF_PORT:-<not set>} @ ${ARIA_TOF_BAUD:-115200}"
 echo "  web: ${ARIA_WEB_HOST}:${ARIA_WEB_PORT}"

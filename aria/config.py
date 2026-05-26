@@ -15,7 +15,9 @@ class CameraConfig:
     source: int | str = os.environ.get("ARIA_CAMERA_SOURCE", "0")
     width: int = int(os.environ.get("ARIA_CAMERA_WIDTH", "1280"))
     height: int = int(os.environ.get("ARIA_CAMERA_HEIGHT", "720"))
-    fps: int | None = None
+    fps: int | None = int(os.environ.get("ARIA_CAMERA_FPS", "30"))
+    fourcc: str | None = os.environ.get("ARIA_CAMERA_FOURCC", "MJPG") or None
+    buffer_size: int = int(os.environ.get("ARIA_CAMERA_BUFFER_SIZE", "1"))
 
     def normalized_source(self) -> int | str:
         return int(self.source) if isinstance(self.source, str) and self.source.isdigit() else self.source
@@ -47,5 +49,5 @@ class DetectorConfig:
 @dataclass(frozen=True)
 class UiConfig:
     box_persistence_s: float = float(os.environ.get("ARIA_BOX_PERSISTENCE_S", "0.45"))
-    jpeg_quality: int = int(os.environ.get("ARIA_JPEG_QUALITY", "70"))
-    stream_max_width: int = int(os.environ.get("ARIA_STREAM_MAX_WIDTH", "960"))
+    jpeg_quality: int = int(os.environ.get("ARIA_JPEG_QUALITY", "60"))
+    stream_max_width: int = int(os.environ.get("ARIA_STREAM_MAX_WIDTH", "640"))

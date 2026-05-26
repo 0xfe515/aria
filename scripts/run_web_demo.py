@@ -26,6 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--camera-source", default=os.environ.get("ARIA_CAMERA_SOURCE", "0"))
     parser.add_argument("--camera-width", type=int, default=int(os.environ.get("ARIA_CAMERA_WIDTH", "1280")))
     parser.add_argument("--camera-height", type=int, default=int(os.environ.get("ARIA_CAMERA_HEIGHT", "720")))
+    parser.add_argument("--camera-fps", type=int, default=int(os.environ.get("ARIA_CAMERA_FPS", "30")))
     parser.add_argument("--tof-port", default=os.environ.get("ARIA_TOF_PORT"))
     parser.add_argument("--tof-baud", type=int, default=int(os.environ.get("ARIA_TOF_BAUD", "115200")))
     parser.add_argument("--hef-path", default=os.environ.get("ARIA_HEF_PATH"))
@@ -34,7 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--box-persistence-s", type=float, default=float(os.environ.get("ARIA_BOX_PERSISTENCE_S", "0.45")))
     parser.add_argument("--jpeg-quality", type=int, default=int(os.environ.get("ARIA_JPEG_QUALITY", "70")))
     parser.add_argument("--stream-max-width", type=int, default=int(os.environ.get("ARIA_STREAM_MAX_WIDTH", "960")))
-    parser.add_argument("--web-fps", type=float, default=float(os.environ.get("ARIA_WEB_FPS", "12")))
+    parser.add_argument("--web-fps", type=float, default=float(os.environ.get("ARIA_WEB_FPS", "30")))
     return parser.parse_args()
 
 
@@ -44,6 +45,7 @@ def main() -> int:
         source=args.camera_source,
         width=args.camera_width,
         height=args.camera_height,
+        fps=args.camera_fps,
     )
     tof_config = TofConfig(port=args.tof_port, baud=args.tof_baud)
     detector_config = DetectorConfig(

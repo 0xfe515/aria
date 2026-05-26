@@ -15,10 +15,13 @@ ARIA_HEF_PATH=/home/aria/proto/prototype/models/yolov8n_640.hef
 ARIA_TOF_PORT=/dev/ttyACM0
 ARIA_CAMERA_SOURCE=0
 ARIA_WEB_PORT=8080
+ARIA_CAMERA_FPS=30
+ARIA_CAMERA_FOURCC=MJPG
+ARIA_CAMERA_BUFFER_SIZE=1
 ARIA_BOX_PERSISTENCE_S=0.45
-ARIA_STREAM_MAX_WIDTH=960
-ARIA_JPEG_QUALITY=70
-ARIA_WEB_FPS=12
+ARIA_STREAM_MAX_WIDTH=640
+ARIA_JPEG_QUALITY=60
+ARIA_WEB_FPS=30
 ```
 
 UI selection:
@@ -54,16 +57,17 @@ The script detects `/home/aria/Desktop` first and creates:
 
 ## Web UI latency tuning
 
-The launcher defaults to a lower-latency MJPEG stream profile:
+The launcher now targets responsive 30 FPS demos by default:
 
-- `ARIA_STREAM_MAX_WIDTH=960`: downscale the rendered web frame before JPEG encoding.
-- `ARIA_JPEG_QUALITY=70`: smaller JPEGs reduce encode/network/browser latency.
-- `ARIA_WEB_FPS=12`: avoids overloading the Pi/browser with stale queued frames.
+- `ARIA_CAMERA_FPS=30`, `ARIA_CAMERA_FOURCC=MJPG`, `ARIA_CAMERA_BUFFER_SIZE=1`: request low-latency USB camera capture with minimal buffering.
+- `ARIA_STREAM_MAX_WIDTH=640`: downscale the rendered web frame before JPEG encoding.
+- `ARIA_JPEG_QUALITY=60`: smaller JPEGs reduce encode/network/browser latency.
+- `ARIA_WEB_FPS=30`: stream at up to 30 FPS when camera/inference can keep up.
 
-For maximum responsiveness, try:
+If the Pi/browser still feels delayed, reduce stream size first:
 
 ```bash
-ARIA_STREAM_MAX_WIDTH=640 ARIA_JPEG_QUALITY=60 ARIA_WEB_FPS=10 scripts/run_demo.sh
+ARIA_STREAM_MAX_WIDTH=480 ARIA_JPEG_QUALITY=55 ARIA_WEB_FPS=30 scripts/run_demo.sh
 ```
 
 For best visual quality at the cost of latency:
