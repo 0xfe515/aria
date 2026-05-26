@@ -37,6 +37,13 @@ Known Raspberry Pi Pico 2W pin mapping for the connected VL53L5CX:
 - VL53L5CX SDA -> Pico GP20
 - VL53L5CX SCL -> Pico GP21
 
+Pico-to-Pi distance bridge for v0:
+- Manage the Pico-side VL53L5CX reader firmware in this repository, preferably under `firmware/pico_vl53l5cx/`.
+- Use USB CDC serial as the default transport between Raspberry Pi Pico 2W and Raspberry Pi 5.
+- The Pi-side `distance` module should read and decode the USB CDC serial stream.
+- Consider a compact binary frame format for ToF data instead of defaulting to debug text. The format should carry at least timestamp or sequence number, sensor status, and the VL53L5CX 8x8 distance values.
+- If a text mode is added, treat it as a debug mode and keep the binary-capable parser path available.
+
 Not available yet or not required for v0:
 - Arducam 1080P Day/Night Vision USB camera module B0506
 - HC-SR04P ultrasonic distance sensor
@@ -64,6 +71,18 @@ Hailo acceleration is mandatory for v0 completion:
 - The demo must load and run a Hailo-compatible YOLOv8n model, such as a HEF compiled for Hailo-8L.
 - CPU-only YOLO inference is allowed only as a local development smoke test.
 - CPU-only inference must not be treated as a completed v0 demo.
+
+Required v0 runtime components:
+- HailoRT installed and working on the Raspberry Pi 5.
+- Hailo Python bindings or an official Hailo example pipeline that can be integrated from Python.
+- A Hailo-8L-compatible YOLOv8n `.hef` model.
+- OpenCV for camera capture, GUI windows, overlays, and status rendering.
+
+Model asset policy:
+- Do not commit large model files, downloaded datasets, or generated model artifacts unless the user explicitly asks for that.
+- Keep model paths configurable.
+- If a pretrained model is needed and is not already available on `aria-core`, search the internet for a suitable model, verify source and license, download it, and record the source URL, model name, version, and local path in the work log.
+- Prefer official Hailo model zoo, vendor examples, or reputable upstream model releases when choosing pretrained assets.
 
 ## Out of Scope for v0 / TODO
 Keep these items visible in TODOs and architecture extension points, but do not make them required for v0.
@@ -110,6 +129,12 @@ Keep hardware-specific code behind small adapters so missing v1 hardware does no
 - If Pi access is unavailable, perform local static checks only and clearly report that hardware verification is blocked.
 - The demo environment is GUI-capable, but resource constrained. Prefer OpenCV windows over a browser/web dashboard for v0.
 - Do not introduce a web server or streaming dashboard unless the user explicitly requests it.
+- Provide small verification scripts as implementation proceeds:
+  - `scripts/verify_camera.py` for camera discovery and frame display.
+  - `scripts/verify_hailo.py` for Hailo runtime/model loading and inference path checks.
+  - `scripts/verify_tof.py` for Pico USB CDC serial and VL53L5CX frame decoding.
+- Use `pytest` as a required development tool for pure logic tests, especially `fusion` and `risk` calculations.
+- Treat `ruff` or other format/static-analysis tools as recommended unless the repository later standardizes them.
 
 ## Git Workflow
 - Use git actively to make work traceable and easy to synchronize with the Raspberry Pi.
