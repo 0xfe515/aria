@@ -42,3 +42,8 @@ class DetectorConfig:
     confidence_threshold: float = float(os.environ.get("ARIA_CONF_THRESHOLD", "0.35"))
     input_size: int = int(os.environ.get("ARIA_DETECTOR_INPUT_SIZE", "640"))
     quantized_input: bool = os.environ.get("ARIA_DETECTOR_QUANTIZED", "1") not in ("0", "false", "False", "FALSE")
+
+
+@dataclass(frozen=True)
+class UiConfig:
+    box_persistence_s: float = float(os.environ.get("ARIA_BOX_PERSISTENCE_S", "0.45"))

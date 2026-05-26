@@ -25,8 +25,10 @@ except Exception:  # pragma: no cover
     cv2 = None  # type: ignore
 
 from aria.camera import Camera, CameraConfig
-from aria.config import DetectorConfig, TofConfig
+from aria.config import DetectorConfig, TofConfig, UiConfig
 from aria.distance import BINARY_FRAME_SIZE, MAGIC, parse_binary_frame
+from aria.fusion import TofFrame, fuse_detection
+from aria.tracker import DetectionPersistence
 
 
 @dataclass
@@ -42,6 +44,7 @@ class DemoStatus:
     tof_valid_zones: int = 0
     tof_center_mm: int | None = None
     alert: str = "none"
+    risk: str = "unknown"
     timestamp: float = field(default_factory=time.time)
 
 
@@ -91,15 +94,32 @@ class OverlayRenderer:
                     else:
                         x1, y1, x2, y2 = det.bbox
                     x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-                    cv2.rectangle(image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                    stale = bool(getattr(det, "stale", False))
+                    risk = getattr(det, "risk", None)
+                    risk_text = str(getattr(risk, "value", risk or ""))
+                    distance_mm = getattr(det, "distance_mm", None)
+                    color = (0, 165, 255) if stale else self._risk_color(risk_text)
+                    cv2.rectangle(image, (x1, y1), (x2, y2), color, 1 if stale else 2)
                     label = getattr(det, "label", "obj")
                     conf = getattr(det, "confidence", 0.0)
-                    txt = f"{label} {conf:.2f}"
+                    suffix = " hold" if stale else ""
+                    dist = f" {distance_mm}mm" if distance_mm is not None else ""
+                    risk_txt = f" {risk_text}" if risk_text else ""
+                    txt = f"{label} {conf:.2f}{dist}{risk_txt}{suffix}"
                     ty = max(y1 - 5, 15)
-                    self._draw_text(image, txt, (x1, ty), color=(0, 0, 255))
+                    self._draw_text(image, txt, (x1, ty), color=color)
                 except Exception:
                     pass
         return image
+
+    def _risk_color(self, risk: str) -> tuple[int, int, int]:
+        if "danger" in risk:
+            return (0, 0, 255)
+        if "caution" in risk:
+            return (0, 255, 255)
+        if "clear" in risk:
+            return (0, 255, 0)
+        return (255, 255, 255)
 
     def _draw_text(self, image: Any, text: str, org: tuple[int, int], color: tuple[int, int, int] = (0, 255, 0)) -> None:
         if cv2 is None:
@@ -308,16 +328,20 @@ class WebDemo:
         camera_config: CameraConfig | None = None,
         tof_config: TofConfig | None = None,
         detector_config: DetectorConfig | None = None,
+        ui_config: UiConfig | None = None,
         host: str = "0.0.0.0",
         port: int = 8080,
         stream_interval: float = 0.033,
+        enable_web: bool = True,
     ) -> None:
         self.camera_config = camera_config or CameraConfig()
         self.tof_config = tof_config or TofConfig()
         self.detector_config = detector_config or DetectorConfig()
+        self.ui_config = ui_config or UiConfig()
         self.host = host
         self.port = port
         self.stream_interval = stream_interval
+        self.enable_web = enable_web
         self._state = _SharedState()
         self._running = threading.Event()
         self._server: ThreadingHTTPServer | None = None
@@ -326,6 +350,7 @@ class WebDemo:
         self._tof_reader: TofSerialReader | None = None
         self._detector = None
         self._renderer = OverlayRenderer()
+        self._persistence = DetectionPersistence(ttl_s=self.ui_config.box_persistence_s)
         self._frame_count = 0
         self._fps_t0 = 0.0
 
@@ -335,10 +360,11 @@ class WebDemo:
 
         # Start the HTTP server before hardware initialization so remote users
         # can load the status page even if camera/serial startup is slow.
-        handler = _make_handler(self._state, self._running.is_set, self.stream_interval)
-        self._server = ThreadingHTTPServer((self.host, self.port), handler)
-        self._server_thread = threading.Thread(target=self._server.serve_forever, daemon=True)
-        self._server_thread.start()
+        if self.enable_web:
+            handler = _make_handler(self._state, self._running.is_set, self.stream_interval)
+            self._server = ThreadingHTTPServer((self.host, self.port), handler)
+            self._server_thread = threading.Thread(target=self._server.serve_forever, daemon=True)
+            self._server_thread.start()
 
         # Camera
         self._camera = Camera(self.camera_config)
@@ -362,6 +388,18 @@ class WebDemo:
                 self._detector.open()
             except Exception:
                 self._detector = None
+
+    def update_once(self) -> None:
+        self._update()
+
+    def _tof_frame(self) -> TofFrame | None:
+        if self._tof_reader is None:
+            return None
+        distances = self._tof_reader.latest_distances
+        if len(distances) != 64:
+            return None
+        rows = tuple(tuple(distances[row * 8 : (row + 1) * 8]) for row in range(8))
+        return TofFrame(rows, sequence=self._tof_reader.latest_sequence, status=self._tof_reader.latest_status or 0)
 
     def _update(self) -> None:
         status = DemoStatus()
@@ -394,21 +432,39 @@ class WebDemo:
             frame = np.zeros((h, w, 3), dtype=np.uint8)
             self._draw_center_text(frame, "Camera unavailable", (w // 2, h // 2))
 
-        # Detect
+        # Detect, fuse with the latest 8x8 ToF frame, then apply short UI persistence.
         detections: list[Any] = []
+        fused_detections: list[Any] = []
+        display_detections: list[Any] = []
         status.detector = "running" if self._detector is not None else "not_loaded"
         if self._detector is not None and frame is not None:
             try:
                 detections = self._detector.detect(frame)
-                status.detection_count = len(detections)
+                tof_frame = self._tof_frame()
+                fused_detections = [fuse_detection(det, frame.shape, tof_frame) for det in detections]
+                risks = [str(getattr(item.risk, "value", item.risk)) for item in fused_detections]
+                if any("danger" in risk for risk in risks):
+                    status.risk = "danger"
+                    status.alert = "danger"
+                elif any("caution" in risk for risk in risks):
+                    status.risk = "caution"
+                    status.alert = "caution"
+                elif fused_detections:
+                    status.risk = "clear" if all("clear" in risk for risk in risks) else "unknown"
             except Exception as exc:
                 status.detector = f"error: {exc}"
                 status.alert = f"detector: {exc}"
 
+        status.detection_count = len(detections)
+        if frame is not None:
+            display_detections = self._persistence.update(
+                fused_detections if fused_detections else detections,
+                image_width=frame.shape[1] if hasattr(frame, "shape") else None,
+            )
         status.frame_count = self._frame_count
         if frame is not None and cv2 is not None:
             status.fps = self._frame_count / max(time.monotonic() - self._fps_t0, 1e-9)
-            image = self._renderer.render(frame, status, detections=detections)
+            image = self._renderer.render(frame, status, detections=display_detections)
             jpeg = _encode_jpeg(image)
             if jpeg:
                 self._state.update(jpeg=jpeg, status=status)
@@ -424,7 +480,10 @@ class WebDemo:
         cv2.putText(image, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
 
     def run(self) -> None:
-        print(f"ARIA web demo starting at http://{self.host}:{self.port}/")
+        if self.enable_web:
+            print(f"ARIA web demo starting at http://{self.host}:{self.port}/")
+        else:
+            print("ARIA demo pipeline starting without web UI")
         try:
             while self._running.is_set():
                 self._update()
@@ -438,6 +497,7 @@ class WebDemo:
         self._running.clear()
         if self._server:
             self._server.shutdown()
+            self._server = None
         if self._detector is not None:
             try:
                 self._detector.close()
