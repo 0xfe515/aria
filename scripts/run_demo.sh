@@ -18,6 +18,9 @@ export ARIA_CAMERA_HEIGHT="${ARIA_CAMERA_HEIGHT:-720}"
 export ARIA_WEB_HOST="${ARIA_WEB_HOST:-0.0.0.0}"
 export ARIA_WEB_PORT="${ARIA_WEB_PORT:-8080}"
 export ARIA_BOX_PERSISTENCE_S="${ARIA_BOX_PERSISTENCE_S:-0.45}"
+export ARIA_JPEG_QUALITY="${ARIA_JPEG_QUALITY:-70}"
+export ARIA_STREAM_MAX_WIDTH="${ARIA_STREAM_MAX_WIDTH:-960}"
+export ARIA_WEB_FPS="${ARIA_WEB_FPS:-12}"
 
 # Demo-friendly auto-detection for aria-core. Explicit environment variables or
 # CLI flags still win, but a plain ./run_demo.sh should use the known local HEF
@@ -66,6 +69,7 @@ echo "  hef: ${ARIA_HEF_PATH:-<not set>}"
 echo "  tof: ${ARIA_TOF_PORT:-<not set>} @ ${ARIA_TOF_BAUD:-115200}"
 echo "  web: ${ARIA_WEB_HOST}:${ARIA_WEB_PORT}"
 echo "  box persistence: ${ARIA_BOX_PERSISTENCE_S}s"
+echo "  stream: max_width=${ARIA_STREAM_MAX_WIDTH}px jpeg_quality=${ARIA_JPEG_QUALITY} fps=${ARIA_WEB_FPS}"
 
 if [[ -z "${ARIA_HEF_PATH:-}" ]]; then
   echo "Warning: ARIA_HEF_PATH is not set; Hailo detector will not load." >&2

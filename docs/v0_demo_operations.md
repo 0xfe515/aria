@@ -16,6 +16,9 @@ ARIA_TOF_PORT=/dev/ttyACM0
 ARIA_CAMERA_SOURCE=0
 ARIA_WEB_PORT=8080
 ARIA_BOX_PERSISTENCE_S=0.45
+ARIA_STREAM_MAX_WIDTH=960
+ARIA_JPEG_QUALITY=70
+ARIA_WEB_FPS=12
 ```
 
 UI selection:
@@ -47,6 +50,26 @@ The script detects `/home/aria/Desktop` first and creates:
 
 ```text
 /home/aria/Desktop/run_aria_demo.sh
+```
+
+## Web UI latency tuning
+
+The launcher defaults to a lower-latency MJPEG stream profile:
+
+- `ARIA_STREAM_MAX_WIDTH=960`: downscale the rendered web frame before JPEG encoding.
+- `ARIA_JPEG_QUALITY=70`: smaller JPEGs reduce encode/network/browser latency.
+- `ARIA_WEB_FPS=12`: avoids overloading the Pi/browser with stale queued frames.
+
+For maximum responsiveness, try:
+
+```bash
+ARIA_STREAM_MAX_WIDTH=640 ARIA_JPEG_QUALITY=60 ARIA_WEB_FPS=10 scripts/run_demo.sh
+```
+
+For best visual quality at the cost of latency:
+
+```bash
+ARIA_STREAM_MAX_WIDTH=1280 ARIA_JPEG_QUALITY=85 ARIA_WEB_FPS=15 scripts/run_demo.sh
 ```
 
 ## Detection box persistence policy

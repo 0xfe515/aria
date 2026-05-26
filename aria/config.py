@@ -47,3 +47,5 @@ class DetectorConfig:
 @dataclass(frozen=True)
 class UiConfig:
     box_persistence_s: float = float(os.environ.get("ARIA_BOX_PERSISTENCE_S", "0.45"))
+    jpeg_quality: int = int(os.environ.get("ARIA_JPEG_QUALITY", "70"))
+    stream_max_width: int = int(os.environ.get("ARIA_STREAM_MAX_WIDTH", "960"))

@@ -32,6 +32,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--conf-threshold", type=float, default=float(os.environ.get("ARIA_CONF_THRESHOLD", "0.35")))
     parser.add_argument("--detector-input-size", type=int, default=int(os.environ.get("ARIA_DETECTOR_INPUT_SIZE", "640")))
     parser.add_argument("--box-persistence-s", type=float, default=float(os.environ.get("ARIA_BOX_PERSISTENCE_S", "0.45")))
+    parser.add_argument("--jpeg-quality", type=int, default=int(os.environ.get("ARIA_JPEG_QUALITY", "70")))
+    parser.add_argument("--stream-max-width", type=int, default=int(os.environ.get("ARIA_STREAM_MAX_WIDTH", "960")))
+    parser.add_argument("--web-fps", type=float, default=float(os.environ.get("ARIA_WEB_FPS", "12")))
     return parser.parse_args()
 
 
@@ -52,9 +55,14 @@ def main() -> int:
         camera_config=camera_config,
         tof_config=tof_config,
         detector_config=detector_config,
-        ui_config=UiConfig(box_persistence_s=args.box_persistence_s),
+        ui_config=UiConfig(
+            box_persistence_s=args.box_persistence_s,
+            jpeg_quality=args.jpeg_quality,
+            stream_max_width=args.stream_max_width,
+        ),
         host=args.host,
         port=args.port,
+        stream_interval=1.0 / max(args.web_fps, 1.0),
     )
     demo.start()
     demo.run()

@@ -132,7 +132,7 @@ class OverlayRenderer:
         )
 
 
-def _encode_jpeg(image: Any, quality: int = 85) -> bytes | None:
+def _encode_jpeg(image: Any, quality: int = 70) -> bytes | None:
     if cv2 is None or image is None:
         return None
     ok, buf = cv2.imencode(".jpg", image, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
@@ -471,11 +471,22 @@ class WebDemo:
         if frame is not None and cv2 is not None:
             status.fps = self._frame_count / max(time.monotonic() - self._fps_t0, 1e-9)
             image = self._renderer.render(frame, status, detections=display_detections)
-            jpeg = _encode_jpeg(image)
+            image = self._resize_for_stream(image)
+            jpeg = _encode_jpeg(image, quality=self.ui_config.jpeg_quality)
             if jpeg:
                 self._state.update(jpeg=jpeg, status=status)
         else:
             self._state.update(status=status)
+
+    def _resize_for_stream(self, image: Any) -> Any:
+        max_width = self.ui_config.stream_max_width
+        if cv2 is None or image is None or max_width <= 0:
+            return image
+        h, w = image.shape[:2]
+        if w <= max_width:
+            return image
+        scale = max_width / float(w)
+        return cv2.resize(image, (max_width, max(1, int(h * scale))), interpolation=cv2.INTER_AREA)
 
     def _draw_center_text(self, image: Any, text: str, center: tuple[int, int]) -> None:
         if cv2 is None:
