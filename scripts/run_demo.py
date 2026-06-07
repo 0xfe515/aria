@@ -12,7 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from aria.config import CameraConfig, DetectorConfig, TofConfig, UiConfig
+from aria.config import CameraConfig, DetectorConfig, DualCameraConfig, TofConfig, UiConfig
 from aria.ui import WebDemo
 
 
@@ -24,6 +24,8 @@ def parse_args() -> argparse.Namespace:
     qt = parser.add_mutually_exclusive_group()
     qt.add_argument("--qt", dest="qt", action="store_true", default=os.environ.get("ARIA_QT", "0") in ("1", "true", "True"))
     qt.add_argument("--no-qt", dest="qt", action="store_false")
+    parser.add_argument("--dual-camera", action="store_true", default=os.environ.get("ARIA_DUAL_CAMERA", "0") in ("1", "true", "True"))
+    parser.add_argument("--primary-role", default=os.environ.get("ARIA_PRIMARY_CAMERA", "right"))
     parser.add_argument("--host", default=os.environ.get("ARIA_WEB_HOST", "0.0.0.0"))
     parser.add_argument("--web-port", "--port", dest="port", type=int, default=int(os.environ.get("ARIA_WEB_PORT", "8080")))
     parser.add_argument("--camera-source", default=os.environ.get("ARIA_CAMERA_SOURCE", "0"))
@@ -44,6 +46,32 @@ def parse_args() -> argparse.Namespace:
 
 
 def build_pipeline(args: argparse.Namespace) -> WebDemo:
+    if args.dual_camera:
+        dual_config = DualCameraConfig.from_env()
+        # allow CLI override of primary role
+        if args.primary_role != dual_config.primary_role:
+            # frozen dataclass, replace
+            from dataclasses import replace
+            dual_config = replace(dual_config, primary_role=args.primary_role)
+        return WebDemo(
+            dual_camera_config=dual_config,
+            tof_config=TofConfig(port=args.tof_port, baud=args.tof_baud),
+            detector_config=DetectorConfig(
+                model_path=args.hef_path,
+                confidence_threshold=args.conf_threshold,
+                input_size=args.detector_input_size,
+            ),
+            ui_config=UiConfig(
+                box_persistence_s=args.box_persistence_s,
+                jpeg_quality=args.jpeg_quality,
+                stream_max_width=args.stream_max_width,
+            ),
+            host=args.host,
+            port=args.port,
+            stream_interval=1.0 / max(args.web_fps, 1.0),
+            enable_web=args.web,
+        )
+
     return WebDemo(
         camera_config=CameraConfig(
             source=args.camera_source,

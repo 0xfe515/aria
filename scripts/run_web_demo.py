@@ -15,12 +15,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from aria.config import CameraConfig, DetectorConfig, TofConfig, UiConfig
+from aria.config import CameraConfig, DetectorConfig, DualCameraConfig, TofConfig, UiConfig
 from aria.ui import WebDemo
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ARIA v0 web demo")
+    parser.add_argument("--dual-camera", action="store_true", default=os.environ.get("ARIA_DUAL_CAMERA", "0") in ("1", "true", "True"))
+    parser.add_argument("--primary-role", default=os.environ.get("ARIA_PRIMARY_CAMERA", "right"))
     parser.add_argument("--host", default=os.environ.get("ARIA_WEB_HOST", "0.0.0.0"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("ARIA_WEB_PORT", "8080")))
     parser.add_argument("--camera-source", default=os.environ.get("ARIA_CAMERA_SOURCE", "0"))
@@ -42,32 +44,55 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    camera_config = CameraConfig(
-        source=args.camera_source,
-        width=args.camera_width,
-        height=args.camera_height,
-        fps=args.camera_fps,
-        threaded=args.camera_threaded,
-    )
-    tof_config = TofConfig(port=args.tof_port, baud=args.tof_baud)
-    detector_config = DetectorConfig(
-        model_path=args.hef_path,
-        confidence_threshold=args.conf_threshold,
-        input_size=args.detector_input_size,
-    )
-    demo = WebDemo(
-        camera_config=camera_config,
-        tof_config=tof_config,
-        detector_config=detector_config,
-        ui_config=UiConfig(
-            box_persistence_s=args.box_persistence_s,
-            jpeg_quality=args.jpeg_quality,
-            stream_max_width=args.stream_max_width,
-        ),
-        host=args.host,
-        port=args.port,
-        stream_interval=1.0 / max(args.web_fps, 1.0),
-    )
+    if args.dual_camera:
+        dual_config = DualCameraConfig.from_env()
+        from dataclasses import replace
+        if args.primary_role != dual_config.primary_role:
+            dual_config = replace(dual_config, primary_role=args.primary_role)
+        demo = WebDemo(
+            dual_camera_config=dual_config,
+            tof_config=TofConfig(port=args.tof_port, baud=args.tof_baud),
+            detector_config=DetectorConfig(
+                model_path=args.hef_path,
+                confidence_threshold=args.conf_threshold,
+                input_size=args.detector_input_size,
+            ),
+            ui_config=UiConfig(
+                box_persistence_s=args.box_persistence_s,
+                jpeg_quality=args.jpeg_quality,
+                stream_max_width=args.stream_max_width,
+            ),
+            host=args.host,
+            port=args.port,
+            stream_interval=1.0 / max(args.web_fps, 1.0),
+        )
+    else:
+        camera_config = CameraConfig(
+            source=args.camera_source,
+            width=args.camera_width,
+            height=args.camera_height,
+            fps=args.camera_fps,
+            threaded=args.camera_threaded,
+        )
+        tof_config = TofConfig(port=args.tof_port, baud=args.tof_baud)
+        detector_config = DetectorConfig(
+            model_path=args.hef_path,
+            confidence_threshold=args.conf_threshold,
+            input_size=args.detector_input_size,
+        )
+        demo = WebDemo(
+            camera_config=camera_config,
+            tof_config=tof_config,
+            detector_config=detector_config,
+            ui_config=UiConfig(
+                box_persistence_s=args.box_persistence_s,
+                jpeg_quality=args.jpeg_quality,
+                stream_max_width=args.stream_max_width,
+            ),
+            host=args.host,
+            port=args.port,
+            stream_interval=1.0 / max(args.web_fps, 1.0),
+        )
     demo.start()
     demo.run()
     return 0

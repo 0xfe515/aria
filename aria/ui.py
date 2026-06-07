@@ -1,7 +1,8 @@
 """Lightweight browser UI for ARIA v0.
 
-Uses Python stdlib ``http.server`` to serve an HTML dashboard with an MJPEG
-stream and a JSON status endpoint. OpenCV overlays are drawn when available.
+Uses Python stdlib ``http.server`` to serve an HTML dashboard with MJPEG
+streams and a JSON status endpoint. Supports both single-camera and dual-camera
+modes. OpenCV overlays are drawn when available.
 Missing cv2, camera, or serial produce clear status messages instead of crashes.
 """
 
@@ -24,8 +25,8 @@ try:
 except Exception:  # pragma: no cover
     cv2 = None  # type: ignore
 
-from aria.camera import Camera, CameraConfig
-from aria.config import DetectorConfig, TofConfig, UiConfig
+from aria.camera import Camera, CameraConfig, CameraFrame, MultiCamera
+from aria.config import DetectorConfig, DualCameraConfig, TofConfig, UiConfig
 from aria.distance import BINARY_FRAME_SIZE, MAGIC, parse_binary_frame
 from aria.fusion import Region, TofFrame, fuse_detection, score_risk
 from aria.tracker import DetectionPersistence
@@ -46,24 +47,44 @@ class DemoStatus:
     alert: str = "none"
     risk: str = "unknown"
     timestamp: float = field(default_factory=time.time)
+    # dual-camera additions
+    dual_mode: bool = False
+    primary_role: str = "right"
+    cameras: dict[str, Any] = field(default_factory=dict)
 
 
 class _SharedState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._jpeg: bytes = b""
+        self._jpeg: dict[str, bytes] = {"primary": b"", "secondary": b""}
         self._status = DemoStatus()
 
-    def update(self, jpeg: bytes | None = None, status: DemoStatus | None = None) -> None:
+    def update(
+        self,
+        jpeg: dict[str, bytes] | bytes | None = None,
+        status: DemoStatus | None = None,
+    ) -> None:
         with self._lock:
             if jpeg is not None:
-                self._jpeg = jpeg
+                if isinstance(jpeg, dict):
+                    self._jpeg.update(jpeg)
+                else:
+                    self._jpeg["primary"] = jpeg
             if status is not None:
                 self._status = status
 
     def get(self) -> tuple[bytes, DemoStatus]:
+        """Backward-compatible single-camera getter. Returns primary JPEG."""
         with self._lock:
-            return self._jpeg[:], self._status
+            return self._jpeg.get("primary", b"")[:], self._status
+
+    def get_jpeg(self, role: str = "primary") -> bytes:
+        with self._lock:
+            return self._jpeg.get(role, b"")[:]
+
+    def get_status(self) -> DemoStatus:
+        with self._lock:
+            return self._status
 
 
 class OverlayRenderer:
@@ -147,7 +168,11 @@ HTML_PAGE = """<!doctype html>
 <style>
 body{font-family:sans-serif;background:#111;color:#0f0;margin:0;padding:8px}
 .wrap{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
-img{border:1px solid #333;max-width:100%;height:auto}
+.stream-box{background:#222;padding:4px;border-radius:4px}
+.stream-box.primary{flex:2;min-width:300px}
+.stream-box.secondary{flex:1;min-width:200px}
+.stream-box h3{margin:4px 0;font-size:0.9rem}
+img{border:1px solid #333;max-width:100%;height:auto;display:block}
 .panel{background:#222;padding:10px;border-radius:4px;min-width:200px}
 h2{margin:0 0 8px;font-size:1.1rem}
 pre{margin:0;font-size:0.9rem}
@@ -155,11 +180,18 @@ pre{margin:0;font-size:0.9rem}
 </head>
 <body>
 <div class="wrap">
-<img src="/stream" alt="ARIA camera stream">
-<div class="panel">
-<h2>Status</h2>
-<pre id="status">connecting...</pre>
-</div>
+  <div class="stream-box primary">
+    <h3>Primary</h3>
+    <img src="/stream/primary" alt="Primary camera">
+  </div>
+  <div class="stream-box secondary">
+    <h3>Secondary</h3>
+    <img src="/stream/secondary" alt="Secondary camera">
+  </div>
+  <div class="panel">
+    <h2>Status</h2>
+    <pre id="status">connecting...</pre>
+  </div>
 </div>
 <script>
 const el=document.getElementById('status');
@@ -187,7 +219,11 @@ def _make_handler(
             if self.path == "/":
                 self._serve_html()
             elif self.path == "/stream":
-                self._serve_stream()
+                self._serve_stream("primary")
+            elif self.path == "/stream/primary":
+                self._serve_stream("primary")
+            elif self.path == "/stream/secondary":
+                self._serve_stream("secondary")
             elif self.path == "/status":
                 self._serve_status()
             else:
@@ -201,7 +237,7 @@ def _make_handler(
             self.end_headers()
             self.wfile.write(body)
 
-        def _serve_stream(self) -> None:
+        def _serve_stream(self, role: str) -> None:
             self.send_response(200)
             self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
             self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate")
@@ -210,7 +246,7 @@ def _make_handler(
             self.end_headers()
             try:
                 while running():
-                    jpeg, _ = state.get()
+                    jpeg = state.get_jpeg(role)
                     if jpeg:
                         self.wfile.write(b"--frame\r\n")
                         self.wfile.write(b"Content-Type: image/jpeg\r\n\r\n")
@@ -221,7 +257,7 @@ def _make_handler(
                 pass
 
         def _serve_status(self) -> None:
-            _, status = state.get()
+            status = state.get_status()
             body = json.dumps(asdict(status), indent=2).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -326,6 +362,7 @@ class WebDemo:
     def __init__(
         self,
         camera_config: CameraConfig | None = None,
+        dual_camera_config: DualCameraConfig | None = None,
         tof_config: TofConfig | None = None,
         detector_config: DetectorConfig | None = None,
         ui_config: UiConfig | None = None,
@@ -335,6 +372,7 @@ class WebDemo:
         enable_web: bool = True,
     ) -> None:
         self.camera_config = camera_config or CameraConfig()
+        self.dual_camera_config = dual_camera_config
         self.tof_config = tof_config or TofConfig()
         self.detector_config = detector_config or DetectorConfig()
         self.ui_config = ui_config or UiConfig()
@@ -342,11 +380,16 @@ class WebDemo:
         self.port = port
         self.stream_interval = stream_interval
         self.enable_web = enable_web
+        self.dual_mode = dual_camera_config is not None
         self._state = _SharedState()
         self._running = threading.Event()
         self._server: ThreadingHTTPServer | None = None
         self._server_thread: threading.Thread | None = None
+        # single-camera
         self._camera: Camera | None = None
+        # dual-camera
+        self._multi_camera: MultiCamera | None = None
+        self._primary_role: str = dual_camera_config.primary_role if dual_camera_config else "right"
         self._tof_reader: TofSerialReader | None = None
         self._detector = None
         self._renderer = OverlayRenderer()
@@ -366,9 +409,13 @@ class WebDemo:
             self._server_thread = threading.Thread(target=self._server.serve_forever, daemon=True)
             self._server_thread.start()
 
-        # Camera
-        self._camera = Camera(self.camera_config)
-        self._camera.open()
+        # Camera(s)
+        if self.dual_mode and self.dual_camera_config is not None:
+            self._multi_camera = MultiCamera(self.dual_camera_config.cameras)
+            self._multi_camera.open()
+        else:
+            self._camera = Camera(self.camera_config)
+            self._camera.open()
 
         # ToF serial reader
         if self.tof_config.port:
@@ -403,7 +450,8 @@ class WebDemo:
 
     def _update(self) -> None:
         status = DemoStatus()
-        status.camera = getattr(self._camera, "status", "not_initialized") if self._camera else "no_camera"
+        status.dual_mode = self.dual_mode
+        status.primary_role = self._primary_role
         status.tof_port = self.tof_config.port
         status.timestamp = time.time()
 
@@ -422,13 +470,47 @@ class WebDemo:
                 if tof_risk in {"danger", "caution"}:
                     status.alert = f"tof_{tof_risk}"
 
-        # Read camera
-        frame = None
-        if self._camera is not None:
+        # Camera read (dual or single)
+        primary_frame: CameraFrame | None = None
+        secondary_frame: CameraFrame | None = None
+        frame: Any = None
+
+        if self.dual_mode and self._multi_camera is not None:
+            frames = self._multi_camera.read_frames()
+            primary_frame = frames.get(self._primary_role)
+            secondary_role = next((r for r in frames if r != self._primary_role), None)
+            secondary_frame = frames.get(secondary_role) if secondary_role else None
+            status.camera = f"dual primary={self._primary_role}"
+            status.cameras = {}
+            for role, cam in self._multi_camera.cameras.items():
+                frm = frames.get(role)
+                if frm is not None:
+                    shape = frm.shape
+                    shp = list(shape) if shape is not None else None
+                else:
+                    shp = None
+                status.cameras[role] = {
+                    "status": cam.status,
+                    "source": self.dual_camera_config.cameras[role].source if self.dual_camera_config else None,
+                    "shape": shp,
+                }
+            if primary_frame is not None:
+                frame = primary_frame.image
+                self._frame_count += 1
+        elif self._camera is not None:
             cam_frame = self._camera.read_frame()
             if cam_frame is not None:
                 frame = cam_frame.image
                 self._frame_count += 1
+            status.camera = getattr(self._camera, "status", "not_initialized") if self._camera else "no_camera"
+
+        # Render secondary JPEG if available
+        jpegs: dict[str, bytes] = {}
+        if secondary_frame is not None and cv2 is not None:
+            sec_img = self._resize_for_stream(secondary_frame.image)
+            sec_jpeg = _encode_jpeg(sec_img, quality=self.ui_config.jpeg_quality)
+            if sec_jpeg:
+                jpegs["secondary"] = sec_jpeg
 
         # Render placeholder if no camera frame but cv2/numpy available
         if frame is None and cv2 is not None and np is not None:
@@ -474,7 +556,8 @@ class WebDemo:
             image = self._resize_for_stream(image)
             jpeg = _encode_jpeg(image, quality=self.ui_config.jpeg_quality)
             if jpeg:
-                self._state.update(jpeg=jpeg, status=status)
+                jpegs["primary"] = jpeg
+            self._state.update(jpeg=jpegs, status=status)
         else:
             self._state.update(status=status)
 
@@ -522,5 +605,7 @@ class WebDemo:
                 pass
         if self._tof_reader:
             self._tof_reader.stop()
+        if self._multi_camera is not None:
+            self._multi_camera.release()
         if self._camera:
             self._camera.release()
