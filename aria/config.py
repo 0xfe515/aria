@@ -23,6 +23,59 @@ class CameraConfig:
     def normalized_source(self) -> int | str:
         return int(self.source) if isinstance(self.source, str) and self.source.isdigit() else self.source
 
+    @classmethod
+    def from_env(cls, prefix: str = "ARIA_CAMERA") -> "CameraConfig":
+        """Build a camera config from runtime environment variables.
+
+        ``prefix`` supports role-specific cameras such as
+        ``ARIA_LEFT_CAMERA_SOURCE`` while keeping the original ``ARIA_CAMERA_*``
+        keys for the single-camera path.
+        """
+
+        def get(name: str, default: str) -> str:
+            return os.environ.get(f"{prefix}_{name}", default)
+
+        fps = get("FPS", "30")
+        return cls(
+            source=get("SOURCE", "0"),
+            width=int(get("WIDTH", "1280")),
+            height=int(get("HEIGHT", "720")),
+            fps=int(fps) if fps else None,
+            fourcc=get("FOURCC", "MJPG") or None,
+            buffer_size=int(get("BUFFER_SIZE", "1")),
+            threaded=get("THREADED", "1") not in ("0", "false", "False", "FALSE"),
+        )
+
+
+@dataclass(frozen=True)
+class DualCameraConfig:
+    cameras: dict[str, CameraConfig]
+    primary_role: str = "right"
+
+    @classmethod
+    def from_env(cls) -> "DualCameraConfig":
+        """Return ARIA's current left/right camera configuration."""
+
+        left = _role_camera_from_env("left", "/dev/video2")
+        right = _role_camera_from_env("right", "/dev/video0")
+        return cls(cameras={"left": left, "right": right}, primary_role=os.environ.get("ARIA_PRIMARY_CAMERA", "right"))
+
+
+def _role_camera_from_env(role: str, default_source: str) -> CameraConfig:
+    prefix = f"ARIA_{role.upper()}_CAMERA"
+    config = CameraConfig.from_env(prefix)
+    if f"{prefix}_SOURCE" in os.environ:
+        return config
+    return CameraConfig(
+        source=default_source,
+        width=config.width,
+        height=config.height,
+        fps=config.fps,
+        fourcc=config.fourcc,
+        buffer_size=config.buffer_size,
+        threaded=config.threaded,
+    )
+
 
 @dataclass(frozen=True)
 class RiskConfig:

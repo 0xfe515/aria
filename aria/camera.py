@@ -15,6 +15,9 @@ from .config import CameraConfig
 class CameraFrame:
     image: Any
     index: int
+    role: str = "primary"
+    source: int | str | None = None
+    timestamp_s: float | None = None
 
     @property
     def shape(self) -> tuple[int, ...] | None:
@@ -88,7 +91,7 @@ class Camera:
             return None
         self._frame_index += 1
         self.status = "open"
-        return CameraFrame(image=image, index=self._frame_index)
+        return CameraFrame(image=image, index=self._frame_index, source=self.config.source, timestamp_s=time.monotonic())
 
     def release(self) -> None:
         self._stop_event.set()
@@ -150,7 +153,7 @@ class Camera:
             self.status = error or "no_frame"
             return None
         self.status = "open"
-        return CameraFrame(image=image, index=index)
+        return CameraFrame(image=image, index=index, source=self.config.source, timestamp_s=time.monotonic())
 
     def __enter__(self) -> "Camera":
         self.open()
@@ -164,3 +167,39 @@ def list_video_nodes(dev_root: str | Path = "/dev") -> list[str]:
     """Return available Linux video node paths, sorted for stable status output."""
 
     return sorted(str(path) for path in Path(dev_root).glob("video*"))
+
+
+class MultiCamera:
+    """Role-aware wrapper for opening and reading multiple cameras safely."""
+
+    def __init__(self, configs: dict[str, CameraConfig], camera_factory: Any = Camera) -> None:
+        self.configs = dict(configs)
+        self.cameras = {role: camera_factory(config) for role, config in self.configs.items()}
+
+    def open(self) -> dict[str, bool]:
+        return {role: bool(camera.open()) for role, camera in self.cameras.items()}
+
+    def read_frames(self) -> dict[str, CameraFrame | None]:
+        frames: dict[str, CameraFrame | None] = {}
+        for role, camera in self.cameras.items():
+            frame = camera.read_frame()
+            if frame is not None:
+                frame.role = role
+                if frame.source is None:
+                    frame.source = self.configs[role].source
+            frames[role] = frame
+        return frames
+
+    def status(self) -> dict[str, str]:
+        return {role: getattr(camera, "status", "unknown") for role, camera in self.cameras.items()}
+
+    def release(self) -> None:
+        for camera in self.cameras.values():
+            camera.release()
+
+    def __enter__(self) -> "MultiCamera":
+        self.open()
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.release()
