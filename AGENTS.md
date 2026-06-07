@@ -62,16 +62,22 @@
   - `ctx purge`: destructive reset of the knowledge base; only use when explicitly requested.
 
 ## Hardware
-Available or assumed for v0:
+Available or assumed for the current demo scope:
 - Raspberry Pi 5 8GB
 - Raspberry Pi AI HAT with Hailo-8L
-- Arducam 120fps Global Shutter USB Camera Board B0332 as the main camera
-- 1x VL53L5CX Time-of-Flight 8x8-zone distance sensor, used as the center ToF sensor
-- Raspberry Pi Pico 2W is assumed available because the wiring plan references it. Verify this before implementing the ToF bridge.
+- Two USB cameras on the glasses:
+  - `/dev/video0`: right camera, Arducam OV9281 capture node (`/dev/video1` is metadata)
+  - `/dev/video2`: left camera, USB Camera capture node (`/dev/video3` is metadata)
+- Exactly 1x VL53L5CX Time-of-Flight 8x8-zone distance sensor for the current scope. Treat it as a center/global proximity signal; do not require left/right ToF sensors unless the user explicitly changes scope.
+- Raspberry Pi Pico 2W is present and currently streams the VL53L5CX data over USB CDC at `/dev/ttyACM0`.
 
 Known Raspberry Pi Pico 2W pin mapping for the connected VL53L5CX:
 - VL53L5CX SDA -> Pico GP20
 - VL53L5CX SCL -> Pico GP21
+
+Current IMU status:
+- IMU is not detected yet. A non-destructive Pico I2C scan found the ToF at `0x29` on GP20/GP21 and no BNO055-style `0x28` address on common Pico I2C pin pairs.
+- Do not implement IMU-dependent behavior until physical installation, wiring, and address selection are verified.
 
 Pico-to-Pi distance bridge for v0:
 - Manage the Pico-side VL53L5CX reader firmware in this repository, preferably under `firmware/pico_vl53l5cx/`.
@@ -80,11 +86,10 @@ Pico-to-Pi distance bridge for v0:
 - Consider a compact binary frame format for ToF data instead of defaulting to debug text. The format should carry at least timestamp or sequence number, sensor status, and the VL53L5CX 8x8 distance values.
 - If a text mode is added, treat it as a debug mode and keep the binary-capable parser path available.
 
-Not available yet or not required for v0:
-- Arducam 1080P Day/Night Vision USB camera module B0506
+Not available yet or not required for current scope:
 - HC-SR04P ultrasonic distance sensor
-- BNO055 IMU
-- Additional VL53L5CX sensors for left and right ToF coverage
+- Working/verified BNO055 IMU
+- Additional VL53L5CX sensors for left and right ToF coverage; current scope intentionally uses only one ToF sensor.
 - Haptic motor output hardware
 
 ## Required v0 Demo Scope
@@ -128,9 +133,9 @@ Keep these items visible in TODOs and architecture extension points, but do not 
 - Dual-camera stereo or image stitching:
   - Add when the sub camera is available.
   - v0 must work with a single main camera.
-- Three-ToF left/center/right fusion:
-  - Add when all VL53L5CX sensors are available.
-  - v0 uses one center sensor and may simulate left/right region distance from image geometry only if clearly labeled.
+- Multi-ToF left/center/right fusion:
+  - Not required for current scope; use exactly one VL53L5CX until the user explicitly changes this.
+  - Current logic may simulate left/right warning regions from image geometry and object motion only if clearly labeled; do not claim independent side distance measurements.
 - 3D mapping:
   - Dropped from v0 because the IMU is not available.
   - Revisit after BNO055 or another IMU is installed.
