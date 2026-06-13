@@ -30,9 +30,16 @@ export ARIA_STREAM_MAX_WIDTH="${ARIA_STREAM_MAX_WIDTH:-480}"
 export ARIA_RAW_STREAM_FPS="${ARIA_RAW_STREAM_FPS:-2}"
 export ARIA_WEB_FPS="${ARIA_WEB_FPS:-30}"
 
-# Explicit environment variables or CLI flags still win, but a plain
-# ./run_demo.sh should use the known aria-core YOLOv8n Hailo model.
-export ARIA_HEF_PATH="${ARIA_HEF_PATH:-/home/aria/proto/prototype/models/yolov8n_640.hef}"
+# Use the known aria-core YOLOv8n Hailo model by default. If an old environment
+# or .env points at a missing custom model, recover to the known-good path so the
+# demo does not silently start with detector=not_loaded.
+DEFAULT_ARIA_HEF_PATH="/home/aria/proto/prototype/models/yolov8n_640.hef"
+if [[ -z "${ARIA_HEF_PATH:-}" ]]; then
+  export ARIA_HEF_PATH="$DEFAULT_ARIA_HEF_PATH"
+elif [[ ! -f "$ARIA_HEF_PATH" && -f "$DEFAULT_ARIA_HEF_PATH" ]]; then
+  echo "Warning: ARIA_HEF_PATH not found: $ARIA_HEF_PATH; using $DEFAULT_ARIA_HEF_PATH" >&2
+  export ARIA_HEF_PATH="$DEFAULT_ARIA_HEF_PATH"
+fi
 
 if [[ -z "${ARIA_TOF_PORT:-}" ]]; then
   for candidate in /dev/serial/by-id/*MicroPython* /dev/ttyACM0 /dev/ttyACM1; do
