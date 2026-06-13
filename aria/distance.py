@@ -23,6 +23,7 @@ BINARY_FRAME_SIZE = 4 + 4 + 1 + 1 + 2 + DISTANCE_PAYLOAD_SIZE + 2
 SENSOR_BLOCK_SIZE = 1 + 1 + 2 + DISTANCE_PAYLOAD_SIZE
 MULTI_DISTANCE_PAYLOAD_SIZE = 3 * SENSOR_BLOCK_SIZE
 MULTI_BINARY_FRAME_SIZE = 4 + 4 + 1 + 1 + 2 + MULTI_DISTANCE_PAYLOAD_SIZE + 2
+VL53L5CX_MAX_RANGE_MM = 4000
 
 ROLE_TO_ID = {"left": 1, "center": 2, "right": 3}
 ID_TO_ROLE = {value: key for key, value in ROLE_TO_ID.items()}
@@ -59,6 +60,17 @@ class MultiTofPacket:
 
 def checksum16(data: bytes) -> int:
     return sum(data) & 0xFFFF
+
+
+def normalize_distance_mm(value: int | None) -> int | None:
+    """Return usable v0 VL53L5CX distances, capped to the documented 4m range."""
+
+    if value is None:
+        return None
+    value = int(value)
+    if value <= 0 or value > VL53L5CX_MAX_RANGE_MM:
+        return None
+    return value
 
 
 def _distance_payload(distances_mm: Iterable[int | None]) -> bytes:
@@ -112,7 +124,7 @@ def parse_binary_frame(data: bytes) -> BinaryTofPacket:
     if payload_len != DISTANCE_PAYLOAD_SIZE:
         raise ValueError(f"unexpected payload length: {payload_len}")
     values = struct.unpack_from("<64H", data, 12)
-    distances = tuple(None if value == 0 else int(value) for value in values)
+    distances = tuple(normalize_distance_mm(value) for value in values)
     return BinaryTofPacket(sequence=sequence, status=status, distances_mm=distances, checksum=expected)
 
 
@@ -144,7 +156,7 @@ def parse_multi_binary_frame(data: bytes) -> MultiTofPacket:
             raise ValueError(f"unknown ToF role id: {role_id}")
         if role in sensors:
             raise ValueError(f"duplicate ToF role: {role}")
-        distances = tuple(None if value == 0 else int(value) for value in values)
+        distances = tuple(normalize_distance_mm(value) for value in values)
         sensors[role] = BinaryTofPacket(sequence=sequence, status=sensor_status, distances_mm=distances, checksum=expected)
     if sensor_count != len(sensors):
         raise ValueError(f"sensor count mismatch: header {sensor_count}, payload {len(sensors)}")
@@ -173,6 +185,6 @@ def parse_text_frame(line: str) -> TofFrame | None:
     numbers = [int(match) for match in re.findall(r"\b\d+\b", line)]
     if len(numbers) < 64:
         return None
-    values = tuple(None if value == 0 else value for value in numbers[-64:])
+    values = tuple(normalize_distance_mm(value) for value in numbers[-64:])
     rows = tuple(tuple(values[row * 8 : (row + 1) * 8]) for row in range(8))
     return TofFrame(distances_mm=rows)
