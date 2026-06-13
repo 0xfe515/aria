@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--detector-max-box-area-ratio",
         type=float,
-        default=_env_float("ARIA_DETECTOR_MAX_BOX_AREA_RATIO", 0.85),
+        default=_env_float("ARIA_DETECTOR_MAX_BOX_AREA_RATIO", 0.0),
     )
     parser.add_argument("--box-persistence-s", type=float, default=_env_float("ARIA_BOX_PERSISTENCE_S", 0.45))
     parser.add_argument("--jpeg-quality", type=int, default=_env_int("ARIA_JPEG_QUALITY", 45))

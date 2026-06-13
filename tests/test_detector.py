@@ -86,6 +86,18 @@ def test_parse_filters_implausible_full_frame_detection():
     assert out[0].bbox.width == pytest.approx(192.0)
 
 
+def test_full_frame_detection_filter_is_disabled_by_default():
+    det = HailoDetector("dummy.hef", confidence_threshold=0.4)
+    arr = np.array([
+        [0.01, 0.01, 0.99, 0.99, 0.9, 2],
+    ], dtype=np.float32)
+
+    out = det._parse_flat_detections(arr, 640, 480)
+
+    assert len(out) == 1
+    assert out[0].label == "car"
+
+
 def test_candidate_class_ids():
     det = HailoDetector("dummy.hef", labels={0: "a", 5: "b"})
     assert det._candidate_class_ids(10) == [0, 5]
