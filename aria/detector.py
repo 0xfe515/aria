@@ -51,6 +51,7 @@ class HailoDetector:
         input_size: int = 640,
         confidence_threshold: float = 0.35,
         quantized_input: bool = True,
+        max_box_area_ratio: float = 0.85,
     ) -> None:
         self.model_path = Path(model_path)
         self.labels = labels or COCO_LABELS
@@ -58,6 +59,7 @@ class HailoDetector:
         self.input_size = input_size
         self.confidence_threshold = confidence_threshold
         self.quantized_input = quantized_input
+        self.max_box_area_ratio = max_box_area_ratio
         self._hpf: Any | None = None
         self._target_context: Any | None = None
         self._target: Any | None = None
@@ -266,6 +268,9 @@ class HailoDetector:
             return None
         bbox = self._scale_bbox(x1, y1, x2, y2, frame_w, frame_h)
         if bbox.width <= 0:
+            return None
+        frame_area = max(1.0, float(frame_w * frame_h))
+        if self.max_box_area_ratio > 0 and bbox.area / frame_area >= self.max_box_area_ratio:
             return None
         return Detection(
             class_id=class_id,

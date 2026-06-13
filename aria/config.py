@@ -211,6 +211,7 @@ class DetectorConfig:
     confidence_threshold: float = _env_float("ARIA_CONF_THRESHOLD", 0.35)
     input_size: int = _env_int("ARIA_DETECTOR_INPUT_SIZE", 640)
     quantized_input: bool = _env_bool("ARIA_DETECTOR_QUANTIZED", True)
+    max_box_area_ratio: float = _env_float("ARIA_DETECTOR_MAX_BOX_AREA_RATIO", 0.85)
 
 
 @dataclass(frozen=True)

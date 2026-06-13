@@ -768,6 +768,7 @@ class WebDemo:
             self.detector_config.confidence_threshold,
             self.detector_config.input_size,
             self.detector_config.quantized_input,
+            self.detector_config.max_box_area_ratio,
         )
         if detector is None or detector_key != key:
             if detector is not None:
@@ -780,6 +781,7 @@ class WebDemo:
                 confidence_threshold=self.detector_config.confidence_threshold,
                 input_size=self.detector_config.input_size,
                 quantized_input=self.detector_config.quantized_input,
+                max_box_area_ratio=self.detector_config.max_box_area_ratio,
             )
             detector.open()
             self._detector_worker_local.detector = detector

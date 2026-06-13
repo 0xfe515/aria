@@ -40,6 +40,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hef-path", default=os.environ.get("ARIA_HEF_PATH", DEFAULT_HEF_PATH))
     parser.add_argument("--conf-threshold", type=float, default=_env_float("ARIA_CONF_THRESHOLD", 0.35))
     parser.add_argument("--detector-input-size", type=int, default=_env_int("ARIA_DETECTOR_INPUT_SIZE", 640))
+    parser.add_argument(
+        "--detector-max-box-area-ratio",
+        type=float,
+        default=_env_float("ARIA_DETECTOR_MAX_BOX_AREA_RATIO", 0.85),
+    )
     parser.add_argument("--box-persistence-s", type=float, default=_env_float("ARIA_BOX_PERSISTENCE_S", 0.45))
     parser.add_argument("--jpeg-quality", type=int, default=_env_int("ARIA_JPEG_QUALITY", 45))
     parser.add_argument("--stream-max-width", type=int, default=_env_int("ARIA_STREAM_MAX_WIDTH", 480))
@@ -90,6 +95,7 @@ def build_pipeline(args: argparse.Namespace) -> WebDemo:
                 model_path=hef_path,
                 confidence_threshold=args.conf_threshold,
                 input_size=args.detector_input_size,
+                max_box_area_ratio=args.detector_max_box_area_ratio,
             ),
             ui_config=UiConfig(
                 box_persistence_s=args.box_persistence_s,
@@ -117,6 +123,7 @@ def build_pipeline(args: argparse.Namespace) -> WebDemo:
             model_path=hef_path,
             confidence_threshold=args.conf_threshold,
             input_size=args.detector_input_size,
+            max_box_area_ratio=args.detector_max_box_area_ratio,
         ),
         ui_config=UiConfig(
             box_persistence_s=args.box_persistence_s,
