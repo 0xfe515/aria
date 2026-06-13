@@ -112,6 +112,8 @@ class Camera:
             elif len(frame.image.shape) == 3 and frame.image.shape[2] >= 3:
                 gray = self._cv2.cvtColor(frame.image, self._cv2.COLOR_BGR2GRAY)
                 frame.image = self._cv2.cvtColor(gray, self._cv2.COLOR_GRAY2BGR)
+        if frame is not None and self.config.enhance_contrast:
+            frame.image = self._enhance_contrast(frame.image)
         return frame
 
     def release(self) -> None:
@@ -181,6 +183,26 @@ class Camera:
             return None
         self.status = "open"
         return CameraFrame(image=image, index=index, source=self.config.source, timestamp_s=timestamp_s or now)
+
+    def _enhance_contrast(self, image: Any) -> Any:
+        if self._cv2 is None or image is None:
+            return image
+        try:
+            tile = max(1, int(self.config.clahe_tile_grid_size))
+            clahe = self._cv2.createCLAHE(
+                clipLimit=max(0.1, float(self.config.clahe_clip_limit)),
+                tileGridSize=(tile, tile),
+            )
+            if len(image.shape) == 2:
+                return clahe.apply(image)
+            if len(image.shape) == 3 and image.shape[2] >= 3:
+                lab = self._cv2.cvtColor(image, self._cv2.COLOR_BGR2LAB)
+                l_chan, a_chan, b_chan = self._cv2.split(lab)
+                enhanced = self._cv2.merge((clahe.apply(l_chan), a_chan, b_chan))
+                return self._cv2.cvtColor(enhanced, self._cv2.COLOR_LAB2BGR)
+        except Exception:
+            return image
+        return image
 
     def __enter__(self) -> "Camera":
         self.open()

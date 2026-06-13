@@ -14,6 +14,7 @@ from aria.ui import (
     _encode_jpeg,
     _make_handler,
 )
+from aria.config import DetectorConfig
 from aria.quality import CameraQuality
 
 
@@ -130,6 +131,22 @@ def test_webdemo_start_stop_without_hardware(monkeypatch):
     assert not demo._running.is_set()
 
 
+def test_webdemo_reports_detector_load_error(monkeypatch):
+    monkeypatch.setattr("aria.camera.Camera.open", lambda self: False)
+    demo = WebDemo(
+        enable_web=False,
+        detector_config=DetectorConfig(model_path="/tmp/aria_missing_model.hef"),
+    )
+    demo.start()
+    demo.update_once()
+    status = demo._state.get_status()
+    demo.stop()
+
+    assert "HEF model not found" in status.detector
+    assert status.detector_error is not None
+    assert status.detector_model_path == "/tmp/aria_missing_model.hef"
+
+
 def test_webdemo_serves_status_and_html(monkeypatch):
     monkeypatch.setattr("aria.camera.Camera.open", lambda self: False)
     demo = WebDemo(host="127.0.0.1", port=0)
@@ -203,6 +220,8 @@ def test_html_page_compact_status_script_surfaces_key_debug_fields():
         'tof_center_mm',
         'tof_valid_zones',
         'detector',
+        'detector_error',
+        'detector_model_path',
         'fps',
         'risk',
         'alert',

@@ -15,6 +15,8 @@ if str(REPO_ROOT) not in sys.path:
 from aria.config import CameraConfig, DetectorConfig, DualCameraConfig, TofConfig, UiConfig, _env_bool, _env_float, _env_int
 from aria.ui import WebDemo
 
+DEFAULT_HEF_PATH = "/home/aria/proto/prototype/models/yolov8n_640.hef"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ARIA v0 demo")
@@ -33,11 +35,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--camera-height", type=int, default=_env_int("ARIA_CAMERA_HEIGHT", 720))
     parser.add_argument("--camera-fps", type=int, default=_env_int("ARIA_CAMERA_FPS", 30))
     parser.add_argument("--camera-threaded", action=argparse.BooleanOptionalAction, default=_env_bool("ARIA_CAMERA_THREADED", True))
+    parser.add_argument(
+        "--camera-enhance-contrast",
+        action=argparse.BooleanOptionalAction,
+        default=_env_bool("ARIA_CAMERA_ENHANCE_CONTRAST", True),
+    )
+    parser.add_argument("--camera-clahe-clip-limit", type=float, default=_env_float("ARIA_CAMERA_CLAHE_CLIP_LIMIT", 2.0))
+    parser.add_argument("--camera-clahe-tile-grid-size", type=int, default=_env_int("ARIA_CAMERA_CLAHE_TILE_GRID_SIZE", 8))
     parser.add_argument("--tof-port", default=os.environ.get("ARIA_TOF_PORT"))
     parser.add_argument("--tof-baud", type=int, default=_env_int("ARIA_TOF_BAUD", 115200))
-    parser.add_argument("--hef-path", default=os.environ.get("ARIA_HEF_PATH"))
+    parser.add_argument("--hef-path", default=os.environ.get("ARIA_HEF_PATH", DEFAULT_HEF_PATH))
     parser.add_argument("--conf-threshold", type=float, default=_env_float("ARIA_CONF_THRESHOLD", 0.35))
     parser.add_argument("--detector-input-size", type=int, default=_env_int("ARIA_DETECTOR_INPUT_SIZE", 640))
+    parser.add_argument(
+        "--detector-max-box-area-ratio",
+        type=float,
+        default=_env_float("ARIA_DETECTOR_MAX_BOX_AREA_RATIO", 0.0),
+    )
     parser.add_argument("--box-persistence-s", type=float, default=_env_float("ARIA_BOX_PERSISTENCE_S", 0.45))
     parser.add_argument("--jpeg-quality", type=int, default=_env_int("ARIA_JPEG_QUALITY", 45))
     parser.add_argument("--stream-max-width", type=int, default=_env_int("ARIA_STREAM_MAX_WIDTH", 480))
@@ -88,6 +102,7 @@ def build_pipeline(args: argparse.Namespace) -> WebDemo:
                 model_path=hef_path,
                 confidence_threshold=args.conf_threshold,
                 input_size=args.detector_input_size,
+                max_box_area_ratio=args.detector_max_box_area_ratio,
             ),
             ui_config=UiConfig(
                 box_persistence_s=args.box_persistence_s,
@@ -109,12 +124,16 @@ def build_pipeline(args: argparse.Namespace) -> WebDemo:
             height=args.camera_height,
             fps=args.camera_fps,
             threaded=args.camera_threaded,
+            enhance_contrast=args.camera_enhance_contrast,
+            clahe_clip_limit=args.camera_clahe_clip_limit,
+            clahe_tile_grid_size=args.camera_clahe_tile_grid_size,
         ),
         tof_config=TofConfig(port=args.tof_port, baud=args.tof_baud),
         detector_config=DetectorConfig(
             model_path=hef_path,
             confidence_threshold=args.conf_threshold,
             input_size=args.detector_input_size,
+            max_box_area_ratio=args.detector_max_box_area_ratio,
         ),
         ui_config=UiConfig(
             box_persistence_s=args.box_persistence_s,

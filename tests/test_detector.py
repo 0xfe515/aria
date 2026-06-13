@@ -72,6 +72,32 @@ def test_parse_flat_detections_tuple_bbox():
     assert out[0].label == "bicycle"
 
 
+def test_parse_filters_implausible_full_frame_detection():
+    det = HailoDetector("dummy.hef", confidence_threshold=0.4, max_box_area_ratio=0.85)
+    arr = np.array([
+        [0.01, 0.01, 0.99, 0.99, 0.9, 2],
+        [0.10, 0.10, 0.40, 0.40, 0.8, 2],
+    ], dtype=np.float32)
+
+    out = det._parse_flat_detections(arr, 640, 480)
+
+    assert len(out) == 1
+    assert out[0].label == "car"
+    assert out[0].bbox.width == pytest.approx(192.0)
+
+
+def test_full_frame_detection_filter_is_disabled_by_default():
+    det = HailoDetector("dummy.hef", confidence_threshold=0.4)
+    arr = np.array([
+        [0.01, 0.01, 0.99, 0.99, 0.9, 2],
+    ], dtype=np.float32)
+
+    out = det._parse_flat_detections(arr, 640, 480)
+
+    assert len(out) == 1
+    assert out[0].label == "car"
+
+
 def test_candidate_class_ids():
     det = HailoDetector("dummy.hef", labels={0: "a", 5: "b"})
     assert det._candidate_class_ids(10) == [0, 5]

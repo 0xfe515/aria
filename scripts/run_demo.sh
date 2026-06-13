@@ -19,6 +19,9 @@ export ARIA_CAMERA_FPS="${ARIA_CAMERA_FPS:-30}"
 export ARIA_CAMERA_FOURCC="${ARIA_CAMERA_FOURCC:-MJPG}"
 export ARIA_CAMERA_BUFFER_SIZE="${ARIA_CAMERA_BUFFER_SIZE:-1}"
 export ARIA_CAMERA_THREADED="${ARIA_CAMERA_THREADED:-1}"
+export ARIA_CAMERA_ENHANCE_CONTRAST="${ARIA_CAMERA_ENHANCE_CONTRAST:-1}"
+export ARIA_CAMERA_CLAHE_CLIP_LIMIT="${ARIA_CAMERA_CLAHE_CLIP_LIMIT:-2.0}"
+export ARIA_CAMERA_CLAHE_TILE_GRID_SIZE="${ARIA_CAMERA_CLAHE_TILE_GRID_SIZE:-8}"
 export ARIA_WEB_HOST="${ARIA_WEB_HOST:-0.0.0.0}"
 export ARIA_WEB_PORT="${ARIA_WEB_PORT:-8080}"
 export ARIA_BOX_PERSISTENCE_S="${ARIA_BOX_PERSISTENCE_S:-0.45}"
@@ -27,19 +30,15 @@ export ARIA_STREAM_MAX_WIDTH="${ARIA_STREAM_MAX_WIDTH:-480}"
 export ARIA_RAW_STREAM_FPS="${ARIA_RAW_STREAM_FPS:-2}"
 export ARIA_WEB_FPS="${ARIA_WEB_FPS:-30}"
 
-# Demo-friendly auto-detection for aria-core. Explicit environment variables or
-# CLI flags still win, but a plain ./run_demo.sh should use the known local HEF
-# and Pico MicroPython USB CDC port when they are present.
+# Use the known aria-core YOLOv8n Hailo model by default. If an old environment
+# or .env points at a missing custom model, recover to the known-good path so the
+# demo does not silently start with detector=not_loaded.
+DEFAULT_ARIA_HEF_PATH="/home/aria/proto/prototype/models/yolov8n_640.hef"
 if [[ -z "${ARIA_HEF_PATH:-}" ]]; then
-  for candidate in \
-    /home/aria/proto/prototype/models/yolov8n_640.hef \
-    /usr/share/hailo-models/yolov8s_h8l.hef \
-    /usr/share/hailo-models/yolov6n_h8l.hef; do
-    if [[ -f "$candidate" ]]; then
-      export ARIA_HEF_PATH="$candidate"
-      break
-    fi
-  done
+  export ARIA_HEF_PATH="$DEFAULT_ARIA_HEF_PATH"
+elif [[ ! -f "$ARIA_HEF_PATH" && -f "$DEFAULT_ARIA_HEF_PATH" ]]; then
+  echo "Warning: ARIA_HEF_PATH not found: $ARIA_HEF_PATH; using $DEFAULT_ARIA_HEF_PATH" >&2
+  export ARIA_HEF_PATH="$DEFAULT_ARIA_HEF_PATH"
 fi
 
 if [[ -z "${ARIA_TOF_PORT:-}" ]]; then
@@ -75,7 +74,7 @@ fi
 
 echo "ARIA demo configuration:"
 echo "  repo: $REPO_ROOT"
-echo "  camera: ${ARIA_CAMERA_SOURCE} (${ARIA_CAMERA_WIDTH}x${ARIA_CAMERA_HEIGHT}@${ARIA_CAMERA_FPS}, fourcc=${ARIA_CAMERA_FOURCC}, buffer=${ARIA_CAMERA_BUFFER_SIZE}, threaded=${ARIA_CAMERA_THREADED})"
+echo "  camera: ${ARIA_CAMERA_SOURCE} (${ARIA_CAMERA_WIDTH}x${ARIA_CAMERA_HEIGHT}@${ARIA_CAMERA_FPS}, fourcc=${ARIA_CAMERA_FOURCC}, buffer=${ARIA_CAMERA_BUFFER_SIZE}, threaded=${ARIA_CAMERA_THREADED}, contrast=${ARIA_CAMERA_ENHANCE_CONTRAST}, clahe=${ARIA_CAMERA_CLAHE_CLIP_LIMIT}/${ARIA_CAMERA_CLAHE_TILE_GRID_SIZE})"
 echo "  hef: ${ARIA_HEF_PATH:-<not set>}"
 echo "  tof: ${ARIA_TOF_PORT:-<not set>} @ ${ARIA_TOF_BAUD:-115200}"
 echo "  web: ${ARIA_WEB_HOST}:${ARIA_WEB_PORT}"
