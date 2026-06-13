@@ -76,21 +76,31 @@ def auto_detect_port() -> str | None:
 
 def parse_aria_frames(raw: bytes) -> list[object]:
     try:
-        from aria.distance import BINARY_FRAME_SIZE, MAGIC, parse_binary_frame
+        from aria.distance import BINARY_FRAME_SIZE, MAGIC, MULTI_MAGIC, parse_any_binary_frame
     except Exception as exc:
         print(f"WARN: could not import ARIA frame parser: {exc}")
         return []
 
     frames: list[object] = []
     cursor = 0
-    while True:
-        start = raw.find(MAGIC, cursor)
-        if start < 0 or start + BINARY_FRAME_SIZE > len(raw):
+    while cursor < len(raw):
+        starts = [idx for idx in (raw.find(MAGIC, cursor), raw.find(MULTI_MAGIC, cursor)) if idx >= 0]
+        if not starts:
             break
-        candidate = raw[start : start + BINARY_FRAME_SIZE]
+        start = min(starts)
+        if raw.startswith(MAGIC, start):
+            frame_size = BINARY_FRAME_SIZE
+        else:
+            if start + 12 > len(raw):
+                break
+            payload_len = int.from_bytes(raw[start + 10 : start + 12], "little")
+            frame_size = 12 + payload_len + 2
+        if start + frame_size > len(raw):
+            break
+        candidate = raw[start : start + frame_size]
         try:
-            frames.append(parse_binary_frame(candidate))
-            cursor = start + BINARY_FRAME_SIZE
+            frames.append(parse_any_binary_frame(candidate))
+            cursor = start + frame_size
         except ValueError:
             cursor = start + 1
     return frames
@@ -145,7 +155,13 @@ def run_tof_check(args: argparse.Namespace) -> int:
     frames = parse_aria_frames(bytes(raw))
     if frames:
         latest = frames[-1]
-        distances = getattr(latest, "distances_mm", ())
+        distances = []
+        sensors = getattr(latest, "sensors", None)
+        if sensors:
+            for packet in sensors.values():
+                distances.extend(getattr(packet, "distances_mm", ()))
+        else:
+            distances = list(getattr(latest, "distances_mm", ()))
         valid_values = [value for value in distances if value is not None and value > 0]
         print(
             "aria_frames={count} latest_sequence={seq} latest_status={status} valid_zones={valid}".format(

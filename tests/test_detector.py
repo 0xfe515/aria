@@ -114,3 +114,15 @@ def test_looks_like_hailo_class_list():
     assert det._looks_like_hailo_class_list([np.zeros((0, 5))])
     assert not det._looks_like_hailo_class_list([])
     assert not det._looks_like_hailo_class_list(np.zeros((3, 5)))
+
+
+def test_preprocess_accepts_grayscale_frame():
+    cv2 = pytest.importorskip("cv2")
+    del cv2
+    det = HailoDetector("dummy.hef", input_size=32, quantized_input=True)
+    frame = np.zeros((24, 40), dtype=np.uint8)
+
+    tensor = det._preprocess(frame)
+
+    assert tensor.shape == (1, 32, 32, 3)
+    assert tensor.dtype == np.uint8

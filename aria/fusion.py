@@ -100,6 +100,30 @@ class TofFrame:
         return int(median(values)) if values else None
 
 
+@dataclass(frozen=True)
+class TofFrameSet:
+    """One or three VL53L5CX frames mapped to ARIA risk regions.
+
+    A single connected ToF is treated as the legacy center/global sensor for all
+    regions. With three sensors, each physical sensor owns its matching left,
+    center, or right region.
+    """
+
+    frames: dict[str, TofFrame]
+
+    def distance_for_region(self, region: Region) -> int | None:
+        if not self.frames:
+            return None
+        if len(self.frames) == 1:
+            frame = next(iter(self.frames.values()))
+            return frame.distance_for_region(Region.CENTER)
+        role = region.value
+        frame = self.frames.get(role) or self.frames.get("center")
+        if frame is None:
+            return None
+        return frame.distance_for_region(Region.CENTER)
+
+
 def image_region(x: float, image_width: int) -> Region:
     if image_width <= 0:
         return Region.CENTER
@@ -151,10 +175,23 @@ class FusedDetection:
     risk: RiskLevel
 
 
+def transform_fused_detection(fd: FusedDetection, scale: float, dx: float = 0, dy: float = 0) -> FusedDetection:
+    """Return a new FusedDetection with its bbox scaled and translated."""
+    det = fd.detection
+    bbox = det.bbox
+    if isinstance(bbox, BBox):
+        x1, y1, x2, y2 = bbox.x1, bbox.y1, bbox.x2, bbox.y2
+    else:
+        x1, y1, x2, y2 = bbox
+    new_bbox = BBox(x1 * scale + dx, y1 * scale + dy, x2 * scale + dx, y2 * scale + dy)
+    new_det = Detection(label=det.label, confidence=det.confidence, bbox=new_bbox, class_id=det.class_id)
+    return FusedDetection(detection=new_det, region=fd.region, distance_mm=fd.distance_mm, risk=fd.risk)
+
+
 def fuse_detection(
     detection: Detection,
     image_shape: tuple[int, int] | tuple[int, int, int],
-    tof: TofFrame | None,
+    tof: TofFrame | TofFrameSet | None,
     *,
     moving_toward_center: bool = False,
     config: RiskConfig | None = None,

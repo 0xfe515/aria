@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 tmp/
 .venv/
+hailort.log
+.pico_backups/
+.review_backup_*/
+aria_camera_samples/

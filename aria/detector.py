@@ -147,7 +147,14 @@ class HailoDetector:
         if cv2 is None:
             raise RuntimeError("cv2 is required for detector preprocessing")
         resized = cv2.resize(frame, (self.input_size, self.input_size))
-        rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+        if resized.ndim == 2:
+            rgb = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+        elif resized.ndim == 3 and resized.shape[2] == 1:
+            rgb = cv2.cvtColor(resized, cv2.COLOR_GRAY2RGB)
+        elif resized.ndim == 3 and resized.shape[2] == 4:
+            rgb = cv2.cvtColor(resized, cv2.COLOR_BGRA2RGB)
+        else:
+            rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
         if self.quantized_input:
             return np.expand_dims(np.ascontiguousarray(rgb), axis=0)
         return np.expand_dims(rgb.astype(np.float32), axis=0)

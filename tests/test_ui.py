@@ -6,12 +6,15 @@ import pytest
 
 from aria.ui import (
     DemoStatus,
+    HTML_PAGE,
     OverlayRenderer,
+    TofSerialReader,
     WebDemo,
     _SharedState,
     _encode_jpeg,
     _make_handler,
 )
+from aria.quality import CameraQuality
 
 
 def test_demo_status_defaults():
@@ -150,3 +153,101 @@ def test_webdemo_serves_status_and_html(monkeypatch):
 
     conn.close()
     demo.stop()
+
+
+def test_single_camera_update_reads_camera_once_with_detector(monkeypatch):
+    np = pytest.importorskip("numpy")
+
+    class FakeDetector:
+        def detect(self, frame):
+            return []
+
+    demo = WebDemo(enable_web=False)
+    demo._detector = FakeDetector()
+    frame = type("Frame", (), {"image": np.zeros((40, 60, 3), dtype=np.uint8), "index": 1})()
+    camera = type("Camera", (), {"status": "open", "reads": 0})()
+    def read_frame():
+        camera.reads += 1
+        return frame
+    camera.read_frame = read_frame
+    demo._camera = camera
+    monkeypatch.setattr(demo._renderer, "render", lambda image, status, detections=None: image)
+
+    demo._update()
+
+    assert camera.reads == 1
+
+
+def test_html_page_uses_720p_debug_dashboard_layout():
+    assert 'class="debug-dashboard"' in HTML_PAGE
+    assert 'combined-panel' in HTML_PAGE
+    assert 'raw-grid' in HTML_PAGE
+    assert 'status-sidebar' in HTML_PAGE
+    assert 'id="alertBanner"' in HTML_PAGE
+    assert 'id="compactStatus"' in HTML_PAGE
+    assert 'height:100vh' in HTML_PAGE
+    assert 'overflow:hidden' in HTML_PAGE
+    assert 'RIGHT / MAIN / raw stream' in HTML_PAGE
+    assert 'LEFT / BACKUP / raw stream' in HTML_PAGE
+    assert HTML_PAGE.index('LEFT / BACKUP / raw stream') < HTML_PAGE.index('RIGHT / MAIN / raw stream')
+    assert '.raw-grid>.left-panel{grid-column:1}' in HTML_PAGE
+    assert '.raw-grid>.right-panel{grid-column:2}' in HTML_PAGE
+
+
+def test_html_page_compact_status_script_surfaces_key_debug_fields():
+    for field in [
+        'active_primary_role',
+        'backup_active',
+        'main_quality',
+        'backup_quality',
+        'tof_center_mm',
+        'tof_valid_zones',
+        'detector',
+        'fps',
+        'risk',
+        'alert',
+    ]:
+        assert field in HTML_PAGE
+    assert 'risk-danger' in HTML_PAGE
+    assert 'risk-caution' in HTML_PAGE
+    assert 'risk-clear' in HTML_PAGE
+
+
+def test_compact_status_uses_text_nodes_instead_of_innerhtml():
+    assert 'function row(k,v)' in HTML_PAGE
+    assert 'document.createElement' in HTML_PAGE
+    assert '.textContent=' in HTML_PAGE
+    assert 'compactEl.replaceChildren' in HTML_PAGE
+    assert 'compactEl.innerHTML' not in HTML_PAGE
+
+
+def test_failure_quality_is_held_briefly_before_returning_to_good():
+    demo = WebDemo(enable_web=False)
+    failed = CameraQuality(status="failed", reason="read_failed")
+    good = CameraQuality(status="good", reason="usable")
+
+    assert demo._quality_with_failure_hold("right", failed, 10.0).status == "failed"
+    held = demo._quality_with_failure_hold("right", good, 10.5)
+    assert held.status == "failed"
+    assert held.reason == "held:read_failed"
+    assert demo._quality_with_failure_hold("right", good, 13.0).status == "good"
+
+
+def test_tof_reader_parses_ascii_imu_demo_lines():
+    reader = TofSerialReader("/dev/null")
+    reader._parse_imu_line(b"IMU,12.5,-1.0,3.0,0.1,0.2,0.3,1.0,2.0,3.0")
+    summary = reader.get_summary()
+
+    assert summary["imu"]["status"] == "ok"
+    assert summary["imu"]["heading_deg"] == 12.5
+    assert summary["imu"]["roll_deg"] == -1.0
+    assert summary["imu"]["pitch_deg"] == 3.0
+    assert summary["imu"]["accel"] == [0.1, 0.2, 0.3]
+    assert summary["imu"]["gyro"] == [1.0, 2.0, 3.0]
+
+
+def test_html_page_compact_status_includes_imu_fields():
+    assert 'imu_status' in HTML_PAGE
+    assert 'imu_heading_deg' in HTML_PAGE
+    assert 'imu_roll_deg' in HTML_PAGE
+    assert 'imu_pitch_deg' in HTML_PAGE

@@ -22,8 +22,9 @@ export ARIA_CAMERA_THREADED="${ARIA_CAMERA_THREADED:-1}"
 export ARIA_WEB_HOST="${ARIA_WEB_HOST:-0.0.0.0}"
 export ARIA_WEB_PORT="${ARIA_WEB_PORT:-8080}"
 export ARIA_BOX_PERSISTENCE_S="${ARIA_BOX_PERSISTENCE_S:-0.45}"
-export ARIA_JPEG_QUALITY="${ARIA_JPEG_QUALITY:-60}"
-export ARIA_STREAM_MAX_WIDTH="${ARIA_STREAM_MAX_WIDTH:-640}"
+export ARIA_JPEG_QUALITY="${ARIA_JPEG_QUALITY:-45}"
+export ARIA_STREAM_MAX_WIDTH="${ARIA_STREAM_MAX_WIDTH:-480}"
+export ARIA_RAW_STREAM_FPS="${ARIA_RAW_STREAM_FPS:-2}"
 export ARIA_WEB_FPS="${ARIA_WEB_FPS:-30}"
 
 # Demo-friendly auto-detection for aria-core. Explicit environment variables or
@@ -31,6 +32,8 @@ export ARIA_WEB_FPS="${ARIA_WEB_FPS:-30}"
 # and Pico MicroPython USB CDC port when they are present.
 if [[ -z "${ARIA_HEF_PATH:-}" ]]; then
   for candidate in \
+    /home/aria/custom_models/yolov8n.hef \
+    /home/aria/custom_models/*.hef \
     /home/aria/proto/prototype/models/yolov8n_640.hef \
     /usr/share/hailo-models/yolov8s_h8l.hef \
     /usr/share/hailo-models/yolov6n_h8l.hef; do
@@ -79,7 +82,7 @@ echo "  hef: ${ARIA_HEF_PATH:-<not set>}"
 echo "  tof: ${ARIA_TOF_PORT:-<not set>} @ ${ARIA_TOF_BAUD:-115200}"
 echo "  web: ${ARIA_WEB_HOST}:${ARIA_WEB_PORT}"
 echo "  box persistence: ${ARIA_BOX_PERSISTENCE_S}s"
-echo "  stream: max_width=${ARIA_STREAM_MAX_WIDTH}px jpeg_quality=${ARIA_JPEG_QUALITY} fps=${ARIA_WEB_FPS}"
+echo "  stream: max_width=${ARIA_STREAM_MAX_WIDTH}px jpeg_quality=${ARIA_JPEG_QUALITY} fps=${ARIA_WEB_FPS} raw_fps=${ARIA_RAW_STREAM_FPS}"
 
 if [[ -z "${ARIA_HEF_PATH:-}" ]]; then
   echo "Warning: ARIA_HEF_PATH is not set; Hailo detector will not load." >&2
