@@ -17,6 +17,15 @@ def test_binary_tof_round_trip():
     assert frame.distances_mm[7][7] == 64
 
 
+def test_binary_tof_keeps_documented_4m_range_and_drops_beyond_range():
+    values = [3999, 4000, 4001, 0] + [100] * 60
+    packet = encode_binary_frame(sequence=7, status=0, distances_mm=values)
+
+    parsed = parse_binary_frame(packet)
+
+    assert parsed.distances_mm[:4] == (3999, 4000, None, None)
+
+
 def test_binary_tof_rejects_bad_checksum():
     packet = bytearray(encode_binary_frame(1, 0, [100] * 64))
     packet[20] ^= 0x01
@@ -39,3 +48,11 @@ def test_text_parser_ignores_status_lines_and_accepts_64_values():
     assert frame is not None
     assert frame.distances_mm[0][0] == 100
     assert frame.distances_mm[7][7] == 163
+
+
+def test_text_parser_uses_same_4m_distance_range():
+    values = [4000, 4001, 0] + [200] * 61
+    frame = parse_text_frame("tof: " + ",".join(str(value) for value in values))
+
+    assert frame is not None
+    assert frame.distances_mm[0][:3] == (4000, None, None)

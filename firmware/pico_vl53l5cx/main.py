@@ -32,12 +32,11 @@ import time
 from machine import I2C, Pin, PWM
 
 from vl53l5cx import DATA_DISTANCE_MM, DATA_TARGET_STATUS, RESOLUTION_8X8
-from vl53l5cx import STATUS_VALID, STATUS_VALID_LARGE_PULSE
 from vl53l5cx.mp import VL53L5CXMP
 
 MAGIC = b"ARF2"
 PAYLOAD_LEN_PER_SENSOR = 1 + 1 + 2 + 64 * 2
-VALID_STATUSES = {STATUS_VALID, STATUS_VALID_LARGE_PULSE}
+VL53L5CX_MAX_RANGE_MM = 4000
 STATUS_OK = 0
 STATUS_SENSOR_ERROR = 1
 STATUS_NO_VALID_ZONES = 2
@@ -286,8 +285,13 @@ def read_sensor_packet(sensor):
     result = tof.get_ranging_data()
     distances = []
     valid_count = 0
-    for distance, target_status in zip(result.distance_mm, result.target_status):
-        if target_status in VALID_STATUSES and distance > 0:
+    for distance, _target_status in zip(result.distance_mm, result.target_status):
+        distance = int(distance)
+        # The demo needs usable readings across the VL53L5CX's documented 4m
+        # range. At longer range the driver can report non-strict target_status
+        # values even when distance_mm is still usable, so keep bounded positive
+        # distances instead of collapsing them to 0/n/a.
+        if 0 < distance <= VL53L5CX_MAX_RANGE_MM:
             distances.append(min(65535, int(distance)))
             valid_count += 1
         else:

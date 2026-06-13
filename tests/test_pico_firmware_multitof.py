@@ -36,3 +36,10 @@ def test_firmware_has_single_and_three_sensor_paths_for_same_default_address():
     assert "init_single_sensor" in text
     assert "set_sensor_address" in text
     assert "0x29" in text
+
+
+def test_firmware_accepts_bounded_positive_distances_up_to_4m():
+    text = FIRMWARE.read_text()
+    assert "VL53L5CX_MAX_RANGE_MM = 4000" in text
+    assert "0 < distance <= VL53L5CX_MAX_RANGE_MM" in text
+    assert "target_status in VALID_STATUSES" not in text
