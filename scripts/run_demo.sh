@@ -27,20 +27,9 @@ export ARIA_STREAM_MAX_WIDTH="${ARIA_STREAM_MAX_WIDTH:-480}"
 export ARIA_RAW_STREAM_FPS="${ARIA_RAW_STREAM_FPS:-2}"
 export ARIA_WEB_FPS="${ARIA_WEB_FPS:-30}"
 
-# Demo-friendly auto-detection for aria-core. Explicit environment variables or
-# CLI flags still win, but a plain ./run_demo.sh should use the known local HEF
-# and Pico MicroPython USB CDC port when they are present.
-if [[ -z "${ARIA_HEF_PATH:-}" ]]; then
-  for candidate in \
-    /home/aria/proto/prototype/models/yolov8n_640.hef \
-    /usr/share/hailo-models/yolov8s_h8l.hef \
-    /usr/share/hailo-models/yolov6n_h8l.hef; do
-    if [[ -f "$candidate" ]]; then
-      export ARIA_HEF_PATH="$candidate"
-      break
-    fi
-  done
-fi
+# Explicit environment variables or CLI flags still win, but a plain
+# ./run_demo.sh should use the known aria-core YOLOv8n Hailo model.
+export ARIA_HEF_PATH="${ARIA_HEF_PATH:-/home/aria/proto/prototype/models/yolov8n_640.hef}"
 
 if [[ -z "${ARIA_TOF_PORT:-}" ]]; then
   for candidate in /dev/serial/by-id/*MicroPython* /dev/ttyACM0 /dev/ttyACM1; do

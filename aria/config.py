@@ -148,7 +148,7 @@ def _role_camera_from_env(role: str, default_source: str, default_grayscale: boo
 
 @dataclass(frozen=True)
 class RiskConfig:
-    close_mm: int = _env_int("ARIA_RISK_CLOSE_MM", 900)
+    close_mm: int = _env_int("ARIA_RISK_CLOSE_MM", 1200)
     caution_mm: int = _env_int("ARIA_RISK_CAUTION_MM", 2000)
     center_region_weight: float = 0.25
     large_box_area_ratio: float = 0.20
@@ -207,7 +207,7 @@ def _env_role_ints(name: str, default: dict[str, int], *, base: int = 10) -> dic
 
 @dataclass(frozen=True)
 class DetectorConfig:
-    model_path: str | None = os.environ.get("ARIA_HEF_PATH")
+    model_path: str | None = os.environ.get("ARIA_HEF_PATH", "/home/aria/proto/prototype/models/yolov8n_640.hef")
     confidence_threshold: float = _env_float("ARIA_CONF_THRESHOLD", 0.35)
     input_size: int = _env_int("ARIA_DETECTOR_INPUT_SIZE", 640)
     quantized_input: bool = _env_bool("ARIA_DETECTOR_QUANTIZED", True)

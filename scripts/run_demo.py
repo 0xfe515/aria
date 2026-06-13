@@ -15,6 +15,8 @@ if str(REPO_ROOT) not in sys.path:
 from aria.config import CameraConfig, DetectorConfig, DualCameraConfig, TofConfig, UiConfig, _env_bool, _env_float, _env_int
 from aria.ui import WebDemo
 
+DEFAULT_HEF_PATH = "/home/aria/proto/prototype/models/yolov8n_640.hef"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ARIA v0 demo")
@@ -35,7 +37,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--camera-threaded", action=argparse.BooleanOptionalAction, default=_env_bool("ARIA_CAMERA_THREADED", True))
     parser.add_argument("--tof-port", default=os.environ.get("ARIA_TOF_PORT"))
     parser.add_argument("--tof-baud", type=int, default=_env_int("ARIA_TOF_BAUD", 115200))
-    parser.add_argument("--hef-path", default=os.environ.get("ARIA_HEF_PATH"))
+    parser.add_argument("--hef-path", default=os.environ.get("ARIA_HEF_PATH", DEFAULT_HEF_PATH))
     parser.add_argument("--conf-threshold", type=float, default=_env_float("ARIA_CONF_THRESHOLD", 0.35))
     parser.add_argument("--detector-input-size", type=int, default=_env_int("ARIA_DETECTOR_INPUT_SIZE", 640))
     parser.add_argument("--box-persistence-s", type=float, default=_env_float("ARIA_BOX_PERSISTENCE_S", 0.45))
