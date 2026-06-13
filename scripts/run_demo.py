@@ -35,6 +35,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--camera-height", type=int, default=_env_int("ARIA_CAMERA_HEIGHT", 720))
     parser.add_argument("--camera-fps", type=int, default=_env_int("ARIA_CAMERA_FPS", 30))
     parser.add_argument("--camera-threaded", action=argparse.BooleanOptionalAction, default=_env_bool("ARIA_CAMERA_THREADED", True))
+    parser.add_argument(
+        "--camera-enhance-contrast",
+        action=argparse.BooleanOptionalAction,
+        default=_env_bool("ARIA_CAMERA_ENHANCE_CONTRAST", True),
+    )
+    parser.add_argument("--camera-clahe-clip-limit", type=float, default=_env_float("ARIA_CAMERA_CLAHE_CLIP_LIMIT", 2.0))
+    parser.add_argument("--camera-clahe-tile-grid-size", type=int, default=_env_int("ARIA_CAMERA_CLAHE_TILE_GRID_SIZE", 8))
     parser.add_argument("--tof-port", default=os.environ.get("ARIA_TOF_PORT"))
     parser.add_argument("--tof-baud", type=int, default=_env_int("ARIA_TOF_BAUD", 115200))
     parser.add_argument("--hef-path", default=os.environ.get("ARIA_HEF_PATH", DEFAULT_HEF_PATH))
@@ -117,6 +124,9 @@ def build_pipeline(args: argparse.Namespace) -> WebDemo:
             height=args.camera_height,
             fps=args.camera_fps,
             threaded=args.camera_threaded,
+            enhance_contrast=args.camera_enhance_contrast,
+            clahe_clip_limit=args.camera_clahe_clip_limit,
+            clahe_tile_grid_size=args.camera_clahe_tile_grid_size,
         ),
         tof_config=TofConfig(port=args.tof_port, baud=args.tof_baud),
         detector_config=DetectorConfig(

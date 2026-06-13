@@ -22,6 +22,15 @@ def test_tof_region_distance_uses_median_valid_columns():
     assert tof.distance_for_region(Region.RIGHT) == 2200
 
 
+def test_tof_region_distance_falls_back_to_any_valid_zone():
+    rows = []
+    for _ in range(8):
+        rows.append((900, 1000, None, None, None, None, 3000, 3100))
+    tof = TofFrame(tuple(rows))
+
+    assert tof.distance_for_region(Region.CENTER) == 900
+
+
 def test_missing_distance_is_unknown_not_clear():
     assert score_risk(region=Region.CENTER, distance_mm=None) is RiskLevel.UNKNOWN
 

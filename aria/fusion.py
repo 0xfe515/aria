@@ -97,7 +97,18 @@ class TofFrame:
                 value = row[col]
                 if value is not None and value > 0:
                     values.append(value)
-        return int(median(values)) if values else None
+        if values:
+            return int(median(values))
+        # A single VL53L5CX is used as a center/global proximity signal in v0.
+        # If the mapped center columns have no valid returns but other 8x8 zones
+        # do, keep the sensor usable instead of surfacing ToF as unknown/n/a.
+        fallback_values = [
+            value
+            for row in self.distances_mm
+            for value in row
+            if value is not None and value > 0
+        ]
+        return min(fallback_values) if fallback_values else None
 
 
 @dataclass(frozen=True)

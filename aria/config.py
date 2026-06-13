@@ -69,6 +69,9 @@ class CameraConfig:
     buffer_size: int = _env_int("ARIA_CAMERA_BUFFER_SIZE", 1)
     threaded: bool = _env_bool("ARIA_CAMERA_THREADED", True)
     grayscale: bool = _env_bool("ARIA_CAMERA_GRAYSCALE", False)
+    enhance_contrast: bool = _env_bool("ARIA_CAMERA_ENHANCE_CONTRAST", True)
+    clahe_clip_limit: float = _env_float("ARIA_CAMERA_CLAHE_CLIP_LIMIT", 2.0)
+    clahe_tile_grid_size: int = _env_int("ARIA_CAMERA_CLAHE_TILE_GRID_SIZE", 8)
     stale_after_s: float = _env_float("ARIA_CAMERA_STALE_AFTER_S", 0.75)
     failure_hold_s: float = _env_float("ARIA_CAMERA_FAILURE_HOLD_S", 2.0)
 
@@ -97,6 +100,9 @@ class CameraConfig:
             buffer_size=_parse_int(get("BUFFER_SIZE", "1"), 1),
             threaded=_parse_bool(get("THREADED", "1"), True),
             grayscale=_parse_bool(get("GRAYSCALE", "0"), False),
+            enhance_contrast=_parse_bool(get("ENHANCE_CONTRAST", "1"), True),
+            clahe_clip_limit=float(get("CLAHE_CLIP_LIMIT", "2.0") or "2.0"),
+            clahe_tile_grid_size=_parse_int(get("CLAHE_TILE_GRID_SIZE", "8"), 8),
             stale_after_s=float(get("STALE_AFTER_S", "0.75") or "0.75"),
             failure_hold_s=float(get("FAILURE_HOLD_S", "2.0") or "2.0"),
         )
@@ -141,6 +147,9 @@ def _role_camera_from_env(role: str, default_source: str, default_grayscale: boo
         buffer_size=config.buffer_size,
         threaded=config.threaded,
         grayscale=default_grayscale or config.grayscale,
+        enhance_contrast=config.enhance_contrast,
+        clahe_clip_limit=config.clahe_clip_limit,
+        clahe_tile_grid_size=config.clahe_tile_grid_size,
         stale_after_s=config.stale_after_s,
         failure_hold_s=config.failure_hold_s,
     )
