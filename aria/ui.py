@@ -43,6 +43,8 @@ class DemoStatus:
     frame_count: int = 0
     detection_count: int = 0
     detector: str = "not_initialized"
+    detector_error: str | None = None
+    detector_model_path: str | None = None
     detector_fps: float = 0.0
     detector_ms: float = 0.0
     tof_port: str | None = None
@@ -315,6 +317,8 @@ function renderStatus(j){
     ['Main Q', fmtQuality(j.main_quality)],
     ['Backup Q', fmtQuality(j.backup_quality)],
     ['Detector', j.detector || 'n/a'],
+    ['Detector err', j.detector_error || 'none'],
+    ['HEF', j.detector_model_path || 'n/a'],
     ['Det FPS', Number.isFinite(j.detector_fps) ? j.detector_fps.toFixed(1) : '0.0'],
     ['Loop ms', Number.isFinite(j.update_ms) ? j.update_ms.toFixed(1) : '0.0'],
     ['ToF C', j.tof_center_mm ?? 'n/a'],
@@ -686,11 +690,13 @@ class WebDemo:
                     raise FileNotFoundError(f"HEF model not found: {model_path}")
                 self._detector = self._detect_with_fresh_hailo
                 self._detector_status = "running"
+                self._detector_error = None
                 self._detector_thread = threading.Thread(target=self._detector_loop, name="aria-detector", daemon=True)
                 self._detector_thread.start()
-            except Exception:
+            except Exception as exc:
                 self._detector = None
-                self._detector_status = "not_loaded"
+                self._detector_error = str(exc)
+                self._detector_status = f"not_loaded: {exc}"
 
     def update_once(self) -> None:
         self._update()
@@ -900,6 +906,8 @@ class WebDemo:
         status.backup_role = self._backup_role()
         status.backup_active = self._active_primary_role != self._main_role
         status.tof_port = self.tof_config.port
+        status.detector_model_path = None if self.detector_config.model_path is None else str(self.detector_config.model_path)
+        status.detector_error = self._detector_error
         status.timestamp = time.time()
 
         # Read ToF
@@ -1029,7 +1037,7 @@ class WebDemo:
         display_detection_source: list[Any] = []
         display_detections: list[Any] = []
         now = time.monotonic()
-        status.detector = self._detector_status if self._detector is not None else "not_loaded"
+        status.detector = self._detector_status
         if self._detector is not None:
             if self._detector_thread is None and self._detector_future is not None and self._detector_future.done():
                 try:
@@ -1069,6 +1077,7 @@ class WebDemo:
                         self._last_published_detector_token = det_frame_token
                     detections, detector_status, detector_error, detector_fps, detector_ms = self._detector_snapshot()
                     status.detector = detector_status
+                    status.detector_error = detector_error
                     status.detector_fps = detector_fps
                     status.detector_ms = detector_ms
                     if detector_error:
