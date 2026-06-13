@@ -149,7 +149,7 @@ def _role_camera_from_env(role: str, default_source: str, default_grayscale: boo
 @dataclass(frozen=True)
 class RiskConfig:
     close_mm: int = _env_int("ARIA_RISK_CLOSE_MM", 900)
-    caution_mm: int = _env_int("ARIA_RISK_CAUTION_MM", 1600)
+    caution_mm: int = _env_int("ARIA_RISK_CAUTION_MM", 2000)
     center_region_weight: float = 0.25
     large_box_area_ratio: float = 0.20
 

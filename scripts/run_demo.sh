@@ -32,8 +32,6 @@ export ARIA_WEB_FPS="${ARIA_WEB_FPS:-30}"
 # and Pico MicroPython USB CDC port when they are present.
 if [[ -z "${ARIA_HEF_PATH:-}" ]]; then
   for candidate in \
-    /home/aria/custom_models/yolov8n.hef \
-    /home/aria/custom_models/*.hef \
     /home/aria/proto/prototype/models/yolov8n_640.hef \
     /usr/share/hailo-models/yolov8s_h8l.hef \
     /usr/share/hailo-models/yolov6n_h8l.hef; do
